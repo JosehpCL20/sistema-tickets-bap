@@ -8,6 +8,7 @@ import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
 import { useAuthStore } from './authStore';
 import type { Ticket, TicketStatus, FiltrosTicket, EstadisticasDashboard } from '../types';
+import { notificarNuevoTicket, crearNotificacion } from '../utils/notifications';
 
 interface TicketState {
   tickets: Ticket[];
@@ -66,7 +67,7 @@ export const useTicketStore = create<TicketState>()(
           if (error) throw error;
           
           const ticketsMapeados: Ticket[] = (data || []).map((d: any) => ({
-            id: d.id, // ✅ Ahora es number
+            id: d.id,
             titulo: d.titulo,
             asunto: d.asunto,
             descripcion: d.descripcion,
@@ -95,11 +96,13 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
+      // ✅ CREAR TICKET - CON NOTIFICACIONES INTEGRADAS
       crearTicket: async (datos: any) => {
         const usuario = useAuthStore.getState().usuarioActual;
         if (!usuario) throw new Error('No autenticado');
         
         try {
+          // 1. Crear el ticket en Supabase
           const { data, error } = await supabase
             .from('tickets')
             .insert([{
@@ -119,11 +122,33 @@ export const useTicketStore = create<TicketState>()(
             
           if (error) throw error;
           
+          // 2. Agregar solicitante como participante
           await supabase
             .from('ticket_participantes')
             .insert([{ ticket_id: data.id, usuario_id: usuario.id }]);
             
+          // 3. Recargar tickets
           await get().cargarTickets();
+          
+          // ✅ 4. ENVIAR NOTIFICACIONES (DESPUÉS de crear exitosamente)
+          
+          // Notificar a admins
+          await notificarNuevoTicket(
+            data.id,
+            data.titulo,
+            usuario.id
+          );
+
+          // Notificar al solicitante (confirmación)
+          await crearNotificacion(
+            usuario.id,
+            data.id,
+            'ticket_created',
+            '📝 Ticket creado',
+            `Tu ticket #${String(data.id).padStart(4, '0')} ha sido registrado correctamente.`,
+            {}
+          );
+          
           return data;
         } catch (err: any) {
           set({ error: err.message });
@@ -131,7 +156,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ID ahora es number
       actualizarTicket: async (id: number, datos: any) => {
         try {
           await supabase
@@ -144,7 +168,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ID ahora es number
       eliminarTicket: async (id: number) => {
         try {
           await supabase.from('tickets').delete().eq('id', id);
@@ -154,7 +177,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ID ahora es number
       cambiarEstado: async (id: number, estado: TicketStatus) => {
         const actualizaciones: any = { estado };
         if (estado === 'resuelto') actualizaciones.fecha_resolucion = new Date().toISOString();
@@ -162,7 +184,6 @@ export const useTicketStore = create<TicketState>()(
         await get().actualizarTicket(id, actualizaciones);
       },
 
-      // ✅ ticketId ahora es number
       asignarTecnico: async (ticketId: number, tecnicoId: string) => {
         try {
           await supabase
@@ -184,7 +205,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ticketId ahora es number
       agregarMensaje: async (ticketId: number, contenido: string) => {
         const usuario = useAuthStore.getState().usuarioActual;
         if (!usuario) return;
@@ -203,7 +223,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ticketId ahora es number
       tomarTicket: async (ticketId: number) => {
         const usuario = useAuthStore.getState().usuarioActual;
         if (!usuario) throw new Error('No autenticado');
@@ -227,7 +246,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ticketId ahora es number
       marcarResuelto: async (ticketId: number) => {
         try {
           await supabase
@@ -246,7 +264,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ticketId ahora es number
       cerrarTicket: async (ticketId: number) => {
         try {
           await supabase
@@ -265,7 +282,6 @@ export const useTicketStore = create<TicketState>()(
         }
       },
 
-      // ✅ ticketId ahora es number
       reabrirTicket: async (ticketId: number) => {
         try {
           await supabase
@@ -317,7 +333,6 @@ export const useTicketStore = create<TicketState>()(
         };
       },
 
-      // ✅ id ahora es number | null
       seleccionarTicket: (id: number | null) => {
         const ticket = id !== null ? get().tickets.find(t => t.id === id) || null : null;
         set({ ticketSeleccionado: ticket });

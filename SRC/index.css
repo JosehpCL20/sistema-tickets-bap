@@ -1,3 +1,494 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* =============================================
+   MODO CLARO - Colores por defecto
+   ============================================= */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --bap-green: #80c398;
+}
+
+/* =============================================
+   MODO OSCURO - Paleta de Grises Profesional
+   ============================================= */
+html.dark {
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #2a2a2a;
+  --bg-hover: #333333;
+  --text-primary: #f5f5f5;
+  --text-secondary: #d4d4d4;
+  --text-muted: #a3a3a3;
+  --text-disabled: #737373;
+  --border-color: #404040;
+  --border-light: #525252;
+  --input-bg: #1a1a1a;
+  --input-border: #404040;
+  --input-focus: #525252;
+  --btn-bg: #333333;
+  --btn-hover: #404040;
+  --btn-text: #f5f5f5;
+}
+
+/* =============================================
+   BASE - Modo Claro
+   ============================================= */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* =============================================
+   MODO OSCURO - Aplicación Global
+   ============================================= */
+
+/* Fondos */
+html.dark body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+html.dark .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+html.dark .bg-gray-50,
+html.dark .bg-gray-100,
+html.dark .bg-gray-200 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+html.dark header,
+html.dark .sticky {
+  background-color: var(--bg-secondary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+/* Textos */
+html.dark .text-gray-800,
+html.dark .text-gray-700,
+html.dark .text-gray-600 {
+  color: var(--text-primary) !important;
+}
+
+html.dark .text-gray-500 {
+  color: var(--text-secondary) !important;
+}
+
+html.dark .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+html.dark .text-gray-300 {
+  color: var(--text-disabled) !important;
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  color: var(--text-primary) !important;
+}
+
+/* Bordes */
+html.dark .border,
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-gray-400,
+html.dark .border-b,
+html.dark .border-t,
+html.dark .border-l,
+html.dark .border-r {
+  border-color: var(--border-color) !important;
+}
+
+html.dark .divide-gray-100,
+html.dark .divide-gray-200 {
+  --tw-divide-opacity: 1;
+  border-color: var(--border-color) !important;
+}
+
+/* =============================================
+   BADGES DE ESTADO - CORRECCIÓN CRÍTICA
+   ============================================= */
+
+/* Estado: NUEVO */
+html.dark .bg-yellow-100 {
+  background-color: #422006 !important;
+}
+html.dark .text-yellow-700,
+html.dark .text-yellow-800 {
+  color: #fbbf24 !important;
+}
+
+/* Estado: ASIGNADO */
+html.dark .bg-blue-100 {
+  background-color: #172554 !important;
+}
+html.dark .text-blue-700,
+html.dark .text-blue-800 {
+  color: #60a5fa !important;
+}
+
+/* Estado: PLANIFICADO */
+html.dark .bg-purple-100 {
+  background-color: #1e1b4b !important;
+}
+html.dark .text-purple-700,
+html.dark .text-purple-800 {
+  color: #818cf8 !important;
+}
+
+/* Estado: RESUELTO */
+html.dark .bg-green-100 {
+  background-color: #052e16 !important;
+}
+html.dark .text-green-700,
+html.dark .text-green-800 {
+  color: #34d399 !important;
+}
+
+/* Estado: CERRADO */
+html.dark .bg-gray-100 {
+  background-color: #1f2937 !important;
+}
+html.dark .text-gray-700 {
+  color: #9ca3af !important;
+}
+
+/* =============================================
+   BADGES DE PRIORIDAD - CORRECCIÓN CRÍTICA
+   ============================================= */
+
+/* Prioridad: MUY BAJA */
+html.dark .bg-gray-100.text-gray-600 {
+  background-color: #1f2937 !important;
+  color: #9ca3af !important;
+}
+
+/* Prioridad: BAJA */
+html.dark .bg-green-100.text-green-700 {
+  background-color: #052e16 !important;
+  color: #4ade80 !important;
+}
+
+/* Prioridad: MEDIA */
+html.dark .bg-blue-100.text-blue-700 {
+  background-color: #172554 !important;
+  color: #60a5fa !important;
+}
+
+/* Prioridad: ALTA */
+html.dark .bg-orange-100.text-orange-700 {
+  background-color: #431407 !important;
+  color: #fb923c !important;
+}
+
+/* Prioridad: MUY ALTA */
+html.dark .bg-red-100.text-red-700 {
+  background-color: #450a0a !important;
+  color: #f87171 !important;
+}
+
+/* =============================================
+   TABLAS - CORRECCIÓN COMPLETA
+   ============================================= */
+html.dark table {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+html.dark thead {
+  background-color: var(--bg-tertiary) !important;
+  border-bottom: 2px solid var(--border-color) !important;
+}
+
+html.dark thead th {
+  color: var(--text-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html.dark tbody tr {
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+html.dark tbody tr:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+html.dark tbody td {
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* =============================================
+   INPUTS Y FORMULARIOS
+   ============================================= */
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark input[type="tel"],
+html.dark input[type="date"],
+html.dark input[type="search"],
+html.dark textarea,
+html.dark select {
+  background-color: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--input-border) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: var(--input-focus) !important;
+  box-shadow: 0 0 0 2px rgba(82, 82, 82, 0.3) !important;
+  outline: none;
+}
+
+/* =============================================
+   BOTONES
+   ============================================= */
+
+/* Botones secundarios */
+html.dark button.bg-gray-100,
+html.dark button.bg-gray-200,
+html.dark button.bg-white,
+html.dark button.border-gray-300 {
+  background-color: var(--btn-bg) !important;
+  color: var(--btn-text) !important;
+  border-color: var(--border-color) !important;
+}
+
+html.dark button.bg-gray-100:hover,
+html.dark button.bg-gray-200:hover,
+html.dark button.bg-white:hover {
+  background-color: var(--btn-hover) !important;
+}
+
+/* Botones primarios (verde BAP) */
+html.dark button[style*="background-color: rgb(128, 195, 152)"],
+html.dark button[style*="background-color: #80c398"],
+html.dark button[style*="background-color: rgb(106, 176, 136)"] {
+  color: #121212 !important;
+}
+
+/* Botones de peligro (rojo) */
+html.dark button[style*="background-color: rgb(234, 76, 91)"],
+html.dark button[style*="background-color: #ea4c5b"] {
+  color: #ffffff !important;
+}
+
+/* =============================================
+   SIDEBAR / MENÚ LATERAL
+   ============================================= */
+html.dark aside {
+  background-color: var(--bg-secondary) !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+html.dark aside a {
+  color: var(--text-secondary) !important;
+}
+
+html.dark aside a:hover,
+html.dark aside a.active {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* =============================================
+   GRÁFICOS DE RECHARTS - CORRECCIÓN CRÍTICA
+   ============================================= */
+
+/* Ejes y textos de gráficos */
+html.dark .recharts-cartesian-axis-tick text,
+html.dark .recharts-text,
+html.dark .recharts-label text {
+  fill: var(--text-secondary) !important;
+}
+
+/* Líneas de grid */
+html.dark .recharts-cartesian-grid line {
+  stroke: var(--border-color) !important;
+}
+
+/* Tooltip de gráficos */
+html.dark .recharts-tooltip-wrapper {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-color) !important;
+}
+
+html.dark .recharts-default-tooltip {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Leyendas */
+html.dark .recharts-legend-item-text {
+  color: var(--text-secondary) !important;
+}
+
+/* =============================================
+   DROPDOWNS Y MODALES
+   ============================================= */
+html.dark .absolute.bg-white,
+html.dark [class*="bg-white"].absolute,
+html.dark .rounded-xl.shadow-lg {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark .bg-gray-50.border-b {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* =============================================
+   SCROLLBAR PERSONALIZADO
+   ============================================= */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--btn-bg);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--btn-hover);
+}
+
+/* =============================================
+   UTILIDADES ADICIONALES
+   ============================================= */
+
+/* Links */
+html.dark a {
+  color: #60a5fa !important;
+}
+
+html.dark a:hover {
+  color: #93c5fd !important;
+}
+
+/* Placeholders */
+html.dark .text-gray-400,
+html.dark .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+/* Badges genéricos */
+html.dark .rounded-full.bg-gray-100 {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Transiciones suaves */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+button,
+input,
+select,
+textarea,
+a {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* =============================================
+   COMPONENTES ESPECÍFICOS - TARJETAS Y CONTENEDORES
+   ============================================= */
+html.dark .rounded-xl,
+html.dark .rounded-lg,
+html.dark .rounded-2xl {
+  border-color: var(--border-color) !important;
+}
+
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* =============================================
+   CHAT / MENSAJES
+   ============================================= */
+html.dark .bg-blue-50 {
+  background-color: #172554 !important;
+}
+
+html.dark .bg-white.p-3 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+html.dark .border-l-4 {
+  border-left-color: #60a5fa !important;
+}
+
+/* =============================================
+   NOTIFICACIONES
+   ============================================= */
+html.dark .bg-blue-100 {
+  background-color: #172554 !important;
+}
+
+html.dark .bg-green-100 {
+  background-color: #052e16 !important;
+}
+
+html.dark .bg-red-100 {
+  background-color: #450a0a !important;
+}
+
+html.dark .bg-orange-100 {
+  background-color: #431407 !important;
+}
+
+html.dark .bg-purple-100 {
+  background-color: #1e1b4b !important;
+}
+
+/* Contador de notificaciones */
+html.dark span[style*="background-color: rgb(234, 76, 91)"],
+html.dark span[style*="background-color: #ea4c5b"] {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+

@@ -3,7 +3,7 @@
 // Sistema de Gestión de Tickets - Banco de Alimentos
 // =============================================
 
-import React from 'react'; 
+import React, { useEffect } from 'react'; 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
@@ -25,6 +25,7 @@ import DashboardGeneralPage from './pages/DashboardGeneralPage';
 import RecuperarPasswordPage from './pages/RecuperarPasswordPage';
 import UsuarioDetallePage from './pages/UsuarioDetallePage';
 import TicketsAtendidosPage from './pages/TicketsAtendidosPage';
+import NotificacionesPage from './pages/NotificacionesPage';
 
 // =============================================
 // COMPONENTE PARA RUTAS PROTEGIDAS (Autenticación)
@@ -88,6 +89,47 @@ function RutaPublica({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const usuarioActual = useAuthStore((state) => state.usuarioActual);
+
+  // ✅ EFECTO PARA APLICAR PREFERENCIAS DE CONFIGURACIÓN
+  useEffect(() => {
+    if (!usuarioActual?.preferencias) return;
+
+    const prefs = usuarioActual.preferencias;
+
+    // 1. Aplicar Modo Oscuro
+    if (prefs.modo_oscuro) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    // 2. Aplicar Tamaño de Texto (en porcentaje, raíz HTML)
+    document.documentElement.style.fontSize = `${prefs.tamaño_texto || 100}%`;
+
+    // 3. Aplicar Contraste de Imágenes (variable CSS)
+    if (prefs.contraste_imagenes) {
+      document.documentElement.style.setProperty('--image-contrast', '1.2');
+    } else {
+      document.documentElement.style.setProperty('--image-contrast', '1');
+    }
+
+    // 4. Aplicar Lector de Pantalla (atributo ARIA)
+    if (prefs.lector_pantalla) {
+      document.documentElement.setAttribute('aria-live', 'polite');
+    } else {
+      document.documentElement.removeAttribute('aria-live');
+    }
+
+    // 5. Aplicar Tamaño de Botones (variable CSS)
+    if (prefs.tamaño_botones && prefs.tamaño_botones !== 100) {
+      document.documentElement.style.setProperty('--button-scale', `${prefs.tamaño_botones / 100}`);
+    } else {
+      document.documentElement.style.setProperty('--button-scale', '1');
+    }
+
+  }, [usuarioActual?.preferencias]);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -162,13 +204,8 @@ function App() {
           <Route path="perfil" element={<PerfilPage />} />
           <Route path="configuracion" element={<ConfiguracionPage />} />
 
-          {/* Notificaciones - placeholder */}
-          <Route path="notificaciones" element={
-            <div className="p-8 text-center">
-              <h1 className="text-2xl font-bold text-gray-800">Notificaciones</h1>
-              <p className="text-gray-500 mt-2">Módulo en desarrollo</p>
-            </div>
-          } />
+          {/* Notificaciones */}
+          <Route path="notificaciones" element={<NotificacionesPage />} />
         </Route>
 
         {/* ========== 404 - Página no encontrada ========== */}
