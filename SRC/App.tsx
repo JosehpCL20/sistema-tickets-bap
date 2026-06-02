@@ -1,9 +1,9 @@
 // =============================================
-// APLICACIÓN PRINCIPAL - ROUTING CON PROTECCIÓN DE ROLES
-// Sistema de Gestión de Tickets - Banco de Alimentos
+// APLICACIÓN PRINCIPAL — ROUTING COMPLETO
+// Sistema de Gestión de Tickets - Banco de Alimentos Perú
 // =============================================
 
-import React, { useEffect } from 'react'; 
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
@@ -19,184 +19,122 @@ import ChatMaestro from './pages/ChatMaestro';
 import PerfilPage from './pages/PerfilPage';
 import ConfiguracionPage from './pages/ConfiguracionPage';
 import UsuariosPage from './pages/UsuariosPage';
+import MisUsuariosPage from './pages/MisUsuariosPage';
 import TicketsPorAtenderPage from './pages/TicketsPorAtenderPage';
-//import DashboardAreaPage from './pages/DashboardAreaPage';
+import TicketsAtendidosPage from './pages/TicketsAtendidosPage';
+import DashboardAreaPage from './pages/DashboardAreaPage';
 import DashboardGeneralPage from './pages/DashboardGeneralPage';
+import DashboardEncuestasPage from './pages/DashboardEncuestasPage';
 import RecuperarPasswordPage from './pages/RecuperarPasswordPage';
 import UsuarioDetallePage from './pages/UsuarioDetallePage';
-import TicketsAtendidosPage from './pages/TicketsAtendidosPage';
 import NotificacionesPage from './pages/NotificacionesPage';
 
-// =============================================
-// COMPONENTE PARA RUTAS PROTEGIDAS (Autenticación)
-// =============================================
+// ─── Guards ───────────────────────────────────────────────────────────────────
 function RutaProtegida({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
-// =============================================
-// COMPONENTE PARA PROTECCIÓN POR ROLES
-// =============================================
-function RutaPorRol({ 
-  children, 
-  rolesPermitidos 
-}: { 
-  children: React.ReactNode; 
-  rolesPermitidos: string[] 
-}) {
+function RutaPublica({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
+}
+
+function RutaPorRol({ children, rolesPermitidos }: { children: React.ReactNode; rolesPermitidos: string[] }) {
   const { usuarioActual } = useAuthStore();
-  
   if (!usuarioActual || !rolesPermitidos.includes(usuarioActual.rol)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8">
-          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+          <p className="text-4xl mb-4">🔒</p>
           <h2 className="text-xl font-semibold text-gray-800">Acceso Restringido</h2>
-          <p className="text-gray-500 mt-2">No tienes permisos para acceder a esta sección</p>
-          <button 
-            onClick={() => window.history.back()}
-            className="mt-4 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-          >
-            ← Volver
-          </button>
+          <p className="text-gray-500 mt-2">No tienes permisos para esta sección</p>
+          <button onClick={() => window.history.back()} className="mt-4 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">← Volver</button>
         </div>
       </div>
     );
   }
-  
   return <>{children}</>;
 }
 
-// =============================================
-// COMPONENTE PARA RUTAS PÚBLICAS
-// =============================================
-function RutaPublica({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <>{children}</>;
-}
-
+// ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
-  const usuarioActual = useAuthStore((state) => state.usuarioActual);
+  const usuarioActual = useAuthStore(s => s.usuarioActual);
 
-  // ✅ EFECTO PARA APLICAR PREFERENCIAS DE CONFIGURACIÓN
   useEffect(() => {
     if (!usuarioActual?.preferencias) return;
-
-    const prefs = usuarioActual.preferencias;
-
-    // 1. Aplicar Modo Oscuro
-    if (prefs.modo_oscuro) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
-    // 2. Aplicar Tamaño de Texto (en porcentaje, raíz HTML)
-    document.documentElement.style.fontSize = `${prefs.tamaño_texto || 100}%`;
-
-    // 3. Aplicar Contraste de Imágenes (variable CSS)
-    if (prefs.contraste_imagenes) {
-      document.documentElement.style.setProperty('--image-contrast', '1.2');
-    } else {
-      document.documentElement.style.setProperty('--image-contrast', '1');
-    }
-
-    // 4. Aplicar Lector de Pantalla (atributo ARIA)
-    if (prefs.lector_pantalla) {
-      document.documentElement.setAttribute('aria-live', 'polite');
-    } else {
-      document.documentElement.removeAttribute('aria-live');
-    }
-
-    // 5. Aplicar Tamaño de Botones (variable CSS)
-    if (prefs.tamaño_botones && prefs.tamaño_botones !== 100) {
-      document.documentElement.style.setProperty('--button-scale', `${prefs.tamaño_botones / 100}`);
-    } else {
-      document.documentElement.style.setProperty('--button-scale', '1');
-    }
-
+    const p = usuarioActual.preferencias;
+    document.documentElement.style.fontSize = `${p.tamano_texto || 100}%`;
+    document.documentElement.style.setProperty('--image-contrast', p.contraste_imagenes ? '1.2' : '1');
+    document.documentElement.style.setProperty('--button-scale', p.tamano_botones ? `${p.tamano_botones / 100}` : '1');
+    if (p.lector_pantalla) document.documentElement.setAttribute('aria-live', 'polite');
+    else document.documentElement.removeAttribute('aria-live');
   }, [usuarioActual?.preferencias]);
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* ========== RUTAS PÚBLICAS ========== */}
-        <Route path="/login" element={
-          <RutaPublica>
-            <LoginPage />
-          </RutaPublica>
-        } />
+        {/* ── Públicas ── */}
+        <Route path="/login" element={<RutaPublica><LoginPage /></RutaPublica>} />
         <Route path="/recuperar-password" element={<RecuperarPasswordPage />} />
 
-        {/* ========== RUTAS PROTEGIDAS (con MainLayout) ========== */}
-        <Route path="/" element={
-          <RutaProtegida>
-            <MainLayout />
-          </RutaProtegida>
-        }>
-          {/* Redirección inicial */}
+        {/* ── Protegidas con Layout ── */}
+        <Route path="/" element={<RutaProtegida><MainLayout /></RutaProtegida>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          
-          {/* Dashboards */}
+
+          {/* Dashboard usuario */}
           <Route path="dashboard" element={<InicioPage />} />
-          {/*<Route path="dashboard-area" element={<DashboardAreaPage />} />*/}
-          
-          {/* ✅ Dashboard General - SOLO superadmin y admin */}
+
+          {/* Dashboards admin */}
           <Route path="dashboard-general" element={
             <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
               <DashboardGeneralPage />
             </RutaPorRol>
           } />
-          
-          {/* ✅ Detalle de Usuario - SOLO superadmin y admin */}
-          <Route path="dashboard/usuario/:userId" element={
-            <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
-              <UsuarioDetallePage />
+          <Route path="dashboard-area" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'supervisor']}>
+              <DashboardAreaPage />
             </RutaPorRol>
           } />
-          
+          <Route path="dashboard-encuestas" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'supervisor']}>
+              <DashboardEncuestasPage />
+            </RutaPorRol>
+          } />
+
           {/* Tickets */}
           <Route path="tickets" element={<TicketsPage />} />
           <Route path="tickets/nuevo" element={<NuevoTicketPage />} />
-          
-          {/* ✅ Detalle de Ticket - SOLO superadmin y admin */}
-          <Route path="tickets/:id" element={
-            <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'tecnico']}>
-              <ChatMaestro />
-            </RutaPorRol>
-          } />
-          
-          {/* ✅ Tickets por Atender - superadmin, admin y tecnico */}
           <Route path="tickets/atender" element={
             <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'tecnico']}>
               <TicketsPorAtenderPage />
             </RutaPorRol>
           } />
-
-          {/* ✅ Tickets Atendidos - superadmin, admin y tecnico */}
           <Route path="tickets/atendidos" element={
             <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'tecnico']}>
               <TicketsAtendidosPage />
             </RutaPorRol>
           } />
-          
-          {/* ✅ Gestión de Usuarios - SOLO superadmin y admin */}
+          <Route path="tickets/:id" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'tecnico', 'supervisor', 'usuario']}>
+              <ChatMaestro />
+            </RutaPorRol>
+          } />
+
+          {/* Usuarios */}
           <Route path="usuarios" element={
             <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
               <UsuariosPage />
+            </RutaPorRol>
+          } />
+          <Route path="usuarios/mis-usuarios" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'supervisor']}>
+              <MisUsuariosPage />
+            </RutaPorRol>
+          } />
+          <Route path="dashboard/usuario/:userId" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
+              <UsuarioDetallePage />
             </RutaPorRol>
           } />
 
@@ -208,15 +146,13 @@ function App() {
           <Route path="notificaciones" element={<NotificacionesPage />} />
         </Route>
 
-        {/* ========== 404 - Página no encontrada ========== */}
+        {/* 404 */}
         <Route path="*" element={
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="text-center">
               <h1 className="text-6xl font-bold text-gray-300">404</h1>
               <p className="text-gray-500 mt-2">Página no encontrada</p>
-              <a href="/" className="mt-4 inline-block text-emerald-600 hover:text-emerald-700">
-                Volver al inicio
-              </a>
+              <a href="/" className="mt-4 inline-block text-emerald-600 hover:underline">← Volver al inicio</a>
             </div>
           </div>
         } />

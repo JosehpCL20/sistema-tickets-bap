@@ -1,304 +1,222 @@
 // =============================================
-// PÁGINA: CONFIGURACIÓN GENERAL
-// Sistema de Gestión de Tickets - Banco de Alimentos Perú
+// PÁGINA: CONFIGURACIÓN PERSONAL — CORREGIDA
+// Fix: handleCancelar restaura TODOS los campos
 // =============================================
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { supabase } from '../lib/supabaseClient';
 import {
-  ArrowLeft, Bell, Mail, Volume2, AlertTriangle, Layout, Eye, Type,
-  Monitor, Contrast, Save, X, CheckCircle, Loader2
+  ArrowLeft, Bell, Mail, Volume2, AlertTriangle,
+  Layout, Eye, Type, Contrast, Save, X, CheckCircle, Loader2
 } from 'lucide-react';
+
+const PREFS_DEFAULT = {
+  modo_oscuro: false,
+  tamano_texto: 100,
+  contraste_imagenes: false,
+  email_asignacion: true,
+  sonido_mensaje: true,
+  alerta_sla: true,
+  vista_tickets: 'cola_general',
+  por_pagina: 15,
+  auto_actualizar: 60,
+  lector_pantalla: false,
+  tamano_botones: 100,
+};
 
 export default function ConfiguracionPage() {
   const navigate = useNavigate();
   const { usuarioActual, actualizarPreferencias } = useAuthStore();
-  
-  // Estados locales para los controles
-  const [modoOscuro, setModoOscuro] = useState(false);
-  const [tamañoTexto, setTamañoTexto] = useState(100);
-  const [contrasteImagenes, setContrasteImagenes] = useState(false);
-  const [emailAsignacion, setEmailAsignacion] = useState(true);
-  const [sonidoMensaje, setSonidoMensaje] = useState(true);
-  const [alertaSLA, setAlertaSLA] = useState(true);
-  const [vistaTickets, setVistaTickets] = useState('cola_general');
-  const [porPagina, setPorPagina] = useState(15);
-  const [autoActualizar, setAutoActualizar] = useState(60);
-  const [lectorPantalla, setLectorPantalla] = useState(false);
-  const [tamañoBotones, setTamañoBotones] = useState(100);
-  
+
+  const [form, setForm] = useState({ ...PREFS_DEFAULT });
   const [guardando, setGuardando] = useState(false);
-  const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error', texto: string } | null>(null);
+  const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
   const [cargando, setCargando] = useState(true);
 
-  // Cargar preferencias al montar
+  // Cargar preferencias guardadas
   useEffect(() => {
     if (usuarioActual?.preferencias) {
-      const prefs = usuarioActual.preferencias;
-      setModoOscuro(prefs.modo_oscuro ?? false);
-      setTamañoTexto(prefs.tamaño_texto ?? 100);
-      setContrasteImagenes(prefs.contraste_imagenes ?? false);
-      setEmailAsignacion(prefs.email_asignacion ?? true);
-      setSonidoMensaje(prefs.sonido_mensaje ?? true);
-      setAlertaSLA(prefs.alerta_sla ?? true);
-      setVistaTickets(prefs.vista_tickets ?? 'cola_general');
-      setPorPagina(prefs.por_pagina ?? 15);
-      setAutoActualizar(prefs.auto_actualizar ?? 60);
-      setLectorPantalla(prefs.lector_pantalla ?? false);
-      setTamañoBotones(prefs.tamaño_botones ?? 100);
+      const p = usuarioActual.preferencias;
+      setForm({
+        modo_oscuro: p.modo_oscuro ?? false,
+        tamano_texto: p.tamano_texto ?? 100,
+        contraste_imagenes: p.contraste_imagenes ?? false,
+        email_asignacion: p.email_asignacion ?? true,
+        sonido_mensaje: p.sonido_mensaje ?? true,
+        alerta_sla: p.alerta_sla ?? true,
+        vista_tickets: p.vista_tickets ?? 'cola_general',
+        por_pagina: p.por_pagina ?? 15,
+        auto_actualizar: p.auto_actualizar ?? 60,
+        lector_pantalla: p.lector_pantalla ?? false,
+        tamano_botones: p.tamano_botones ?? 100,
+      });
     }
     setCargando(false);
   }, [usuarioActual?.preferencias]);
 
-  // ✅ APLICAR MODO OSCURO INMEDIATAMENTE al cambiar el toggle
-  useEffect(() => {
-    if (modoOscuro) {
-      document.documentElement.classList.add('dark');
+  // ✅ handleCancelar restaura TODOS los 11 campos
+  const handleCancelar = () => {
+    if (usuarioActual?.preferencias) {
+      const p = usuarioActual.preferencias;
+      setForm({
+        modo_oscuro: p.modo_oscuro ?? false,
+        tamano_texto: p.tamano_texto ?? 100,
+        contraste_imagenes: p.contraste_imagenes ?? false,
+        email_asignacion: p.email_asignacion ?? true,
+        sonido_mensaje: p.sonido_mensaje ?? true,
+        alerta_sla: p.alerta_sla ?? true,
+        vista_tickets: p.vista_tickets ?? 'cola_general',
+        por_pagina: p.por_pagina ?? 15,
+        auto_actualizar: p.auto_actualizar ?? 60,
+        lector_pantalla: p.lector_pantalla ?? false,
+        tamano_botones: p.tamano_botones ?? 100,
+      });
     } else {
-      document.documentElement.classList.remove('dark');
+      setForm({ ...PREFS_DEFAULT });
     }
-  }, [modoOscuro]);
-
-  // ✅ APLICAR TAMAÑO DE TEXTO INMEDIATAMENTE
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${tamañoTexto}%`;
-  }, [tamañoTexto]);
+    setMensaje(null);
+  };
 
   const handleGuardar = async () => {
     if (!usuarioActual) return;
     setGuardando(true);
     setMensaje(null);
-
     try {
-      // ✅ LLAMAR AL STORE para guardar en Supabase
-      await actualizarPreferencias({
-        modo_oscuro: modoOscuro,
-        tamaño_texto: tamañoTexto,
-        contraste_imagenes: contrasteImagenes,
-        email_asignacion: emailAsignacion,
-        sonido_mensaje: sonidoMensaje,
-        alerta_sla: alertaSLA,
-        vista_tickets: vistaTickets,
-        por_pagina: porPagina,
-        auto_actualizar: autoActualizar,
-        lector_pantalla: lectorPantalla,
-        tamaño_botones: tamañoBotones
-      });
-
+      await actualizarPreferencias(form);
       setMensaje({ tipo: 'success', texto: '✅ Configuración guardada correctamente' });
       setTimeout(() => setMensaje(null), 3000);
-      
     } catch (error: any) {
-      console.error('❌ Error guardando:', error);
       setMensaje({ tipo: 'error', texto: `❌ Error: ${error.message}` });
     } finally {
       setGuardando(false);
     }
   };
 
-  const handleCancelar = () => {
-    // Recargar preferencias desde el store
-    if (usuarioActual?.preferencias) {
-      const prefs = usuarioActual.preferencias;
-      setModoOscuro(prefs.modo_oscuro ?? false);
-      setTamañoTexto(prefs.tamaño_texto ?? 100);
-      // ... restaurar otros valores
-    }
-    setMensaje(null);
-  };
+  const toggle = (key: keyof typeof form) =>
+    setForm(f => ({ ...f, [key]: !f[key] }));
 
-  if (cargando) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
-      </div>
-    );
-  }
+  const set = (key: keyof typeof form, value: any) =>
+    setForm(f => ({ ...f, [key]: value }));
+
+  if (cargando) return (
+    <div className="flex items-center justify-center min-h-96">
+      <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
+    </div>
+  );
+
+  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
+    <button onClick={onChange}
+      className={`relative w-12 h-6 rounded-full transition-colors ${checked ? 'bg-emerald-500' : 'bg-gray-300'}`}
+      style={checked ? { backgroundColor: '#80c398' } : {}}>
+      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-7' : 'translate-x-1'}`} />
+    </button>
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-4">
-        <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-100 rounded-lg">
+        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Configuración</h1>
-          <p className="text-gray-500 text-sm">Configuración del sistema</p>
+          <h1 className="text-2xl font-bold text-gray-800">Configuración Personal</h1>
+          <p className="text-gray-500 text-sm">Preferencias de la cuenta</p>
         </div>
       </div>
 
-      {/* Mensaje */}
       {mensaje && (
-        <div className={`p-4 rounded-lg flex items-start gap-2 ${
-          mensaje.tipo === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-        }`}>
-          {mensaje.tipo === 'success' ? (
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          ) : (
-            <AlertTriangle className="w-5 h-5 text-red-500" />
-          )}
+        <div className={`p-4 rounded-lg flex items-center gap-2 ${mensaje.tipo === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+          {mensaje.tipo === 'success' ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertTriangle className="w-5 h-5 text-red-500" />}
           <p className={mensaje.tipo === 'success' ? 'text-green-700' : 'text-red-700'}>{mensaje.texto}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Columna Izquierda */}
-        <div className="space-y-6">
-          
-          {/* Notificaciones */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Bell className="w-5 h-5 text-blue-600" /> Notificaciones
-            </h2>
-            <div className="space-y-4">
-              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Email al asignar ticket</span>
-                </div>
-                <input type="checkbox" checked={emailAsignacion} onChange={(e) => setEmailAsignacion(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-emerald-600" style={{ accentColor: '#80c398' }} />
-              </label>
-              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Volume2 className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Sonido en nuevo mensaje</span>
-                </div>
-                <input type="checkbox" checked={sonidoMensaje} onChange={(e) => setSonidoMensaje(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-emerald-600" style={{ accentColor: '#80c398' }} />
-              </label>
-              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Alerta SLA por vencer</span>
-                </div>
-                <input type="checkbox" checked={alertaSLA} onChange={(e) => setAlertaSLA(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-emerald-600" style={{ accentColor: '#80c398' }} />
-              </label>
+        {/* NOTIFICACIONES */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Bell className="w-5 h-5 text-blue-500" /> Notificaciones</h2>
+          {[
+            { key: 'email_asignacion' as const, icon: <Mail className="w-4 h-4" />, label: 'Email al asignar ticket' },
+            { key: 'sonido_mensaje' as const, icon: <Volume2 className="w-4 h-4" />, label: 'Sonido en nuevo mensaje' },
+            { key: 'alerta_sla' as const, icon: <AlertTriangle className="w-4 h-4" />, label: 'Alerta SLA por vencer' },
+          ].map(({ key, icon, label }) => (
+            <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-gray-700">{icon}{label}</div>
+              <Toggle checked={!!form[key]} onChange={() => toggle(key)} />
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Tickets */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Layout className="w-5 h-5 text-purple-600" /> Tickets
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Vista</label>
-                <select value={vistaTickets} onChange={(e) => setVistaTickets(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white"
-                  style={{ '--tw-ring-color': '#80c398' } as any}>
-                  <option value="cola_general">Cola general</option>
-                  <option value="lista">Lista</option>
-                  <option value="tarjetas">Tarjetas</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Por página</label>
-                <select value={porPagina} onChange={(e) => setPorPagina(parseInt(e.target.value))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white"
-                  style={{ '--tw-ring-color': '#80c398' } as any}>
-                  <option value={15}>15</option>
-                  <option value={30}>30</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Auto-actualizar</label>
-                <select value={autoActualizar} onChange={(e) => setAutoActualizar(parseInt(e.target.value))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white"
-                  style={{ '--tw-ring-color': '#80c398' } as any}>
-                  <option value={30}>30 seg</option>
-                  <option value={60}>60 seg</option>
-                  <option value={120}>2 min</option>
-                  <option value={0}>Desactivado</option>
-                </select>
-              </div>
-            </div>
+        {/* TICKETS */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Layout className="w-5 h-5 text-purple-500" /> Tickets</h2>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Vista</label>
+            <select value={form.vista_tickets} onChange={e => set('vista_tickets', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm">
+              <option value="cola_general">Cola general</option>
+              <option value="lista">Lista</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Registros por página: {form.por_pagina}</label>
+            <input type="range" min={10} max={50} step={5} value={form.por_pagina}
+              onChange={e => set('por_pagina', parseInt(e.target.value))}
+              className="w-full" style={{ accentColor: '#80c398' }} />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Auto-actualizar: {form.auto_actualizar}s</label>
+            <select value={form.auto_actualizar} onChange={e => set('auto_actualizar', parseInt(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm">
+              {[30, 60, 120, 300].map(v => <option key={v} value={v}>{v}s</option>)}
+            </select>
           </div>
         </div>
 
-        {/* Columna Derecha - Apariencia */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Eye className="w-5 h-5 text-emerald-600" /> Apariencia
-            </h2>
-            <div className="space-y-4">
-              
-              {/* ✅ MODO OSCURO - Toggle */}
-              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Monitor className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Modo Oscuro</span>
-                </div>
-                <input type="checkbox" checked={modoOscuro} onChange={(e) => setModoOscuro(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-emerald-600" style={{ accentColor: '#80c398' }} />
-              </label>
-
-              {/* Tamaño de texto */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Type className="w-4 h-4" /> Tamaño del texto
-                </label>
-                <input type="number" value={tamañoTexto} onChange={(e) => setTamañoTexto(parseInt(e.target.value) || 100)}
-                  min="80" max="150" step="5"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-                  style={{ '--tw-ring-color': '#80c398' } as any} />
-                <p className="text-xs text-gray-500 mt-1">{tamañoTexto}% (80-150%)</p>
-              </div>
-
-              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Eye className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Lector de pantalla</span>
-                </div>
-                <input type="checkbox" checked={lectorPantalla} onChange={(e) => setLectorPantalla(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-emerald-600" style={{ accentColor: '#80c398' }} />
-              </label>
-
-              <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Contrast className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Contraste de imágenes</span>
-                </div>
-                <input type="checkbox" checked={contrasteImagenes} onChange={(e) => setContrasteImagenes(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-300 text-emerald-600" style={{ accentColor: '#80c398' }} />
-              </label>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tamaño de Botones</label>
-                <input type="number" value={tamañoBotones} onChange={(e) => setTamañoBotones(parseInt(e.target.value) || 100)}
-                  min="80" max="150" step="5"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-                  style={{ '--tw-ring-color': '#80c398' } as any} />
-                <p className="text-xs text-gray-500 mt-1">{tamañoBotones}% (80-150%)</p>
-              </div>
-            </div>
+        {/* ACCESIBILIDAD */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Eye className="w-5 h-5 text-green-500" /> Accesibilidad</h2>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Tamaño de texto: {form.tamano_texto}%</label>
+            <input type="range" min={80} max={130} step={5} value={form.tamano_texto}
+              onChange={e => set('tamano_texto', parseInt(e.target.value))}
+              className="w-full" style={{ accentColor: '#80c398' }} />
           </div>
+          {[
+            { key: 'lector_pantalla' as const, icon: <Eye className="w-4 h-4" />, label: 'Modo lector de pantalla' },
+            { key: 'contraste_imagenes' as const, icon: <Contrast className="w-4 h-4" />, label: 'Alto contraste en imágenes' },
+          ].map(({ key, icon, label }) => (
+            <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-gray-700">{icon}{label}</div>
+              <Toggle checked={!!form[key]} onChange={() => toggle(key)} />
+            </div>
+          ))}
+        </div>
+
+        {/* APARIENCIA */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Type className="w-5 h-5 text-orange-500" /> Apariencia</h2>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Tamaño de botones: {form.tamano_botones}%</label>
+            <input type="range" min={80} max={130} step={5} value={form.tamano_botones}
+              onChange={e => set('tamano_botones', parseInt(e.target.value))}
+              className="w-full" style={{ accentColor: '#80c398' }} />
+          </div>
+          <p className="text-xs text-gray-400">El modo oscuro está desactivado temporalmente (en desarrollo).</p>
         </div>
       </div>
 
       {/* Botones */}
-      <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-        <button onClick={handleCancelar} disabled={guardando}
-          className="flex items-center gap-2 px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-          <X className="w-5 h-5" /> Cancelar
+      <div className="flex justify-end gap-3 pt-2">
+        <button onClick={handleCancelar}
+          className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 font-medium">
+          <X className="w-4 h-4" /> Cancelar
         </button>
         <button onClick={handleGuardar} disabled={guardando}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-white font-medium disabled:opacity-50"
-          style={{ backgroundColor: '#80c398' }}
-          onMouseEnter={(e) => !guardando && (e.currentTarget.style.backgroundColor = '#6ab088')}
-          onMouseLeave={(e) => !guardando && (e.currentTarget.style.backgroundColor = '#80c398')}>
-          {guardando ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Guardando...</>
-          ) : (
-            <><Save className="w-5 h-5" /> Guardar Cambios</>
-          )}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-medium disabled:opacity-60"
+          style={{ backgroundColor: '#80c398' }}>
+          {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {guardando ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
     </div>

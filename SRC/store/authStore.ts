@@ -1,38 +1,23 @@
 // =============================================
-// STORE DE AUTENTICACIÓN - ZUSTAND + SUPABASE
-// Sistema de Gestión de Tickets - Banco de Alimentos Perú
+// STORE DE AUTENTICACIÓN — Zustand + Supabase
+// Fixes: avatar fallback, preferencias con campo sin tilde
 // =============================================
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
-import type { User, UserRole, Notificacion, UserPreferences } from '../types';
-
-export interface Notification {
-  id: string;
-  user_id: string;
-  ticket_id: number | null;
-  type: string;
-  title: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-  metadata: Record<string, any>;
-}
+import type { User, UserRole, UserPreferences, Notificacion } from '../types';
 
 interface AuthState {
   usuarioActual: User | null;
   usuarios: User[];
-  notificaciones: Notification[];
+  notificaciones: Notificacion[];
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
 
-  // Autenticación
   login: (correo: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  
-  // Usuarios
   cargarUsuarios: () => Promise<void>;
   obtenerUsuarioPorId: (id: string) => User | undefined;
   obtenerUsuariosPorRol: (rol: UserRole) => User[];
@@ -40,24 +25,31 @@ interface AuthState {
   obtenerAdministradores: () => User[];
   obtenerSupervisores: () => User[];
   actualizarUsuario: (id: string, datos: Partial<User>) => Promise<void>;
-  
-  // Preferencias de configuración
   actualizarPreferencias: (datos: Partial<UserPreferences>) => Promise<void>;
-  
-  // Notificaciones
   cargarNotificaciones: () => Promise<void>;
-  agregarNotificacion: (notif: Omit<Notification, 'id' | 'is_read' | 'created_at'>) => Promise<void>;
   marcarNotificacionLeida: (id: string) => Promise<void>;
   marcarTodasLeidas: () => Promise<void>;
   eliminarNotificacion: (id: string) => Promise<void>;
-  obtenerNotificacionesNoLeidas: () => Notification[];
-  
-  // Realtime
   SuscribirseNotificaciones: () => () => void;
-  
-  // Utilidades
   limpiarError: () => void;
 }
+
+const avatarFallback = (nombre: string, apellidos = '') =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(`${nombre} ${apellidos}`.trim())}&background=80c398&color=fff&size=256`;
+
+const mapearUsuario = (u: any): User => ({
+  id: u.id,
+  nombre: u.nombre || '',
+  apellidos: u.apellidos || '',
+  correo: u.correo,
+  telefono: u.telefono,
+  rol: u.rol as UserRole,
+  area: u.area || '',
+  activo: u.activo ?? true,
+  avatar: u.avatar || avatarFallback(u.nombre || '', u.apellidos || ''),
+  fechaCreacion: new Date(u.fecha_creacion),
+  ultimoAcceso: u.ultimo_acceso ? new Date(u.ultimo_acceso) : undefined,
+});
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -69,386 +61,219 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
 
-      // ========== AUTENTICACIÓN ==========
-      login: async (correo: string, password: string): Promise<boolean> => {
+      // ─── LOGIN ────────────────────────────────────────────
+      login: async (correo, password) => {
         set({ isLoading: true, error: null });
-        
         try {
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: correo,
-            password: password
+            email: correo, password
           });
-          
-          if (authError) {
-            set({ isLoading: false, error: 'Correo o contraseña incorrectos' });
-            return false;
-          }
-          
+          if (authError) { set({ isLoading: false, error: 'Correo o contraseña incorrectos' }); return false; }
+
           const { data: usuario, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('correo', correo)
-            .single();
-          
-          if (userError || !usuario) {
-            set({ isLoading: false, error: 'Usuario no encontrado' });
-            return false;
-          }
-          
-          if (!usuario.activo) {
-            set({ isLoading: false, error: 'Usuario inactivo. Contacta a Sistemas.' });
-            return false;
-          }
-          
-          // Actualizar último acceso
-          await supabase.from('users').update({ 
-            ultimo_acceso: new Date().toISOString() 
-          }).eq('id', usuario.id);
-          
-          // ✅ Cargar preferencias del usuario
-          const { data: prefs, error: prefsError } = await supabase
-            .from('user_preferences')
-            .select('*')
-            .eq('user_id', usuario.id)
-            .single();
-          
-          const preferencias = prefsError || !prefs ? null : prefs as UserPreferences;
-          
+            .from('users').select('*').eq('correo', correo).single();
+          if (userError || !usuario) { set({ isLoading: false, error: 'Usuario no encontrado' }); return false; }
+          if (!usuario.activo) { set({ isLoading: false, error: 'Usuario inactivo. Contacta a Sistemas.' }); return false; }
+
+          await supabase.from('users').update({ ultimo_acceso: new Date().toISOString() }).eq('id', usuario.id);
+
+          const { data: prefs } = await supabase
+            .from('user_preferences').select('*').eq('user_id', usuario.id).single();
+
+          // Mapear nombres de columnas BD → interfaz (sin tilde)
+          const preferencias: UserPreferences | null = prefs ? {
+            ...prefs,
+            tamano_texto: prefs.tamano_texto ?? 100,
+            tamano_botones: prefs.tamano_botones ?? 100,
+          } : null;
+
           const usuarioActual: User = {
-            id: usuario.id,
-            nombre: usuario.nombre,
-            apellidos: usuario.apellidos,
-            correo: usuario.correo,
-            telefono: usuario.telefono,
-            rol: usuario.rol as UserRole,
-            area: usuario.area,
-            activo: usuario.activo,
-            avatar: usuario.avatar,
-            fechaCreacion: new Date(usuario.fecha_creacion),
-            ultimoAcceso: new Date(),
-            preferencias: preferencias
+            ...mapearUsuario(usuario),
+            preferencias,
           };
-          
+
           await get().cargarUsuarios();
           await get().cargarNotificaciones();
-          
+
           set({ usuarioActual, isAuthenticated: true, isLoading: false, error: null });
           return true;
-        } catch (error: any) {
-          set({ isLoading: false, error: error.message || 'Error al iniciar sesión' });
+        } catch (err: any) {
+          set({ isLoading: false, error: err.message || 'Error al iniciar sesión' });
           return false;
         }
       },
 
       logout: async () => {
         await supabase.auth.signOut();
-        set({ 
-          usuarioActual: null, 
-          isAuthenticated: false, 
-          notificaciones: [],
-          usuarios: []
-        });
+        set({ usuarioActual: null, isAuthenticated: false, notificaciones: [], usuarios: [] });
       },
 
-      // ========== USUARIOS ==========
+      // ─── USUARIOS ─────────────────────────────────────────
       cargarUsuarios: async () => {
         try {
           const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('activo', true)
-            .order('nombre', { ascending: true });
-          
+            .from('users').select('*').eq('activo', true).order('nombre');
           if (error) throw error;
-          
-          const usuariosMapeados: User[] = (data || []).map((u: any) => ({
-            id: u.id,
-            nombre: u.nombre,
-            apellidos: u.apellidos,
-            correo: u.correo,
-            telefono: u.telefono,
-            rol: u.rol as UserRole,
-            area: u.area,
-            activo: u.activo,
-            avatar: u.avatar,
-            fechaCreacion: new Date(u.fecha_creacion),
-            ultimoAcceso: u.ultimo_acceso ? new Date(u.ultimo_acceso) : undefined
-          }));
-          
-          set({ usuarios: usuariosMapeados });
-        } catch (error: any) {
-          console.error('Error cargando usuarios:', error);
+          set({ usuarios: (data || []).map(mapearUsuario) });
+        } catch (err) {
+          console.error('Error cargando usuarios:', err);
         }
       },
 
-      obtenerUsuarioPorId: (id: string) => 
-        get().usuarios.find(u => u.id === id),
-      
-      obtenerUsuariosPorRol: (rol: UserRole) => 
-        get().usuarios.filter(u => u.rol === rol && u.activo),
-      
-      obtenerTecnicos: () => 
-        get().usuarios.filter(u => u.rol === 'tecnico' && u.activo),
-      
-      obtenerAdministradores: () => 
-        get().usuarios.filter(u => u.rol === 'administrador' && u.activo),
-      
-      obtenerSupervisores: () => 
-        get().usuarios.filter(u => u.rol === 'supervisor' && u.activo),
+      obtenerUsuarioPorId: (id) => get().usuarios.find(u => u.id === id),
+      obtenerUsuariosPorRol: (rol) => get().usuarios.filter(u => u.rol === rol && u.activo),
+      obtenerTecnicos: () => get().usuarios.filter(u => u.rol === 'tecnico' && u.activo),
+      obtenerAdministradores: () => get().usuarios.filter(u => u.rol === 'administrador' && u.activo),
+      obtenerSupervisores: () => get().usuarios.filter(u => u.rol === 'supervisor' && u.activo),
 
-      actualizarUsuario: async (id: string, datos: Partial<User>) => {
+      actualizarUsuario: async (id, datos) => {
         try {
-          const { error } = await supabase
-            .from('users')
-            .update({
-              nombre: datos.nombre,
-              apellidos: datos.apellidos,
-              telefono: datos.telefono,
-              area: datos.area,
-              avatar: datos.avatar,
-              fecha_modificacion: new Date().toISOString()
-            })
-            .eq('id', id);
-          
+          const updatePayload: any = {
+            fecha_modificacion: new Date().toISOString(),
+          };
+          if (datos.nombre !== undefined) updatePayload.nombre = datos.nombre;
+          if (datos.apellidos !== undefined) updatePayload.apellidos = datos.apellidos;
+          if (datos.telefono !== undefined) updatePayload.telefono = datos.telefono;
+          if (datos.area !== undefined) updatePayload.area = datos.area;
+          if (datos.avatar !== undefined) updatePayload.avatar = datos.avatar;
+          if (datos.rol !== undefined) updatePayload.rol = datos.rol;
+          if (datos.activo !== undefined) updatePayload.activo = datos.activo;
+
+          const { error } = await supabase.from('users').update(updatePayload).eq('id', id);
           if (error) throw error;
-          
+
           set(state => ({
-            usuarios: state.usuarios.map(u => 
-              u.id === id ? { ...u, ...datos } : u
-            ),
-            usuarioActual: state.usuarioActual?.id === id 
-              ? { ...state.usuarioActual, ...datos } 
+            usuarios: state.usuarios.map(u => u.id === id ? { ...u, ...datos } : u),
+            usuarioActual: state.usuarioActual?.id === id
+              ? { ...state.usuarioActual, ...datos }
               : state.usuarioActual
           }));
-        } catch (error: any) {
-          console.error('Error actualizando usuario:', error);
-          throw error;
+        } catch (err: any) {
+          console.error('Error actualizando usuario:', err);
+          throw err;
         }
       },
 
-      // ✅ NUEVO: Función para guardar preferencias de configuración
-      actualizarPreferencias: async (datos: Partial<UserPreferences>) => {
+      // ─── PREFERENCIAS ─────────────────────────────────────
+      actualizarPreferencias: async (datos) => {
         const usuario = get().usuarioActual;
         if (!usuario) return;
-
         try {
-          // Verificar si ya existe registro de preferencias
+          const payload = { ...datos, updated_at: new Date().toISOString() };
           const { data: existing } = await supabase
-            .from('user_preferences')
-            .select('id')
-            .eq('user_id', usuario.id)
-            .single();
+            .from('user_preferences').select('id').eq('user_id', usuario.id).single();
 
           if (existing) {
-            // Actualizar registro existente
             const { error } = await supabase
-              .from('user_preferences')
-              .update({ 
-                ...datos, 
-                updated_at: new Date().toISOString() 
-              })
-              .eq('user_id', usuario.id);
-            
+              .from('user_preferences').update(payload).eq('user_id', usuario.id);
             if (error) throw error;
           } else {
-            // Insertar nuevo registro
             const { error } = await supabase
               .from('user_preferences')
-              .insert([{ 
-                user_id: usuario.id, 
-                ...datos,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }]);
-            
+              .insert([{ user_id: usuario.id, ...payload, created_at: new Date().toISOString() }]);
             if (error) throw error;
           }
 
-          // Actualizar en el estado local del store
-          const nuevasPrefs = { 
-            ...(usuario.preferencias || {}), 
-            ...datos 
-          } as UserPreferences;
-          
-          set({
-            usuarioActual: { 
-              ...usuario, 
-              preferencias: nuevasPrefs 
-            }
-          });
-          
-        } catch (error: any) {
-          console.error('Error guardando preferencias:', error);
-          throw error;
+          const nuevasPrefs = { ...(usuario.preferencias || {}), ...datos } as UserPreferences;
+          set({ usuarioActual: { ...usuario, preferencias: nuevasPrefs } });
+        } catch (err: any) {
+          console.error('Error guardando preferencias:', err);
+          throw err;
         }
       },
 
-      // ========== NOTIFICACIONES ==========
+      // ─── NOTIFICACIONES ───────────────────────────────────
       cargarNotificaciones: async () => {
         const usuario = get().usuarioActual;
         if (!usuario) return;
-
         try {
           const { data, error } = await supabase
-            .from('notifications')
-            .select('*')
+            .from('notifications').select('*')
             .eq('user_id', usuario.id)
             .order('created_at', { ascending: false })
             .limit(50);
-          
           if (error) throw error;
           set({ notificaciones: data || [] });
-        } catch (error: any) {
-          console.error('Error cargando notificaciones:', error);
+        } catch (err) {
+          console.error('Error cargando notificaciones:', err);
         }
       },
 
-      agregarNotificacion: async (notif) => {
-        const usuario = get().usuarioActual;
-        if (!usuario) return;
-
+      marcarNotificacionLeida: async (id) => {
         try {
-          const { data, error } = await supabase
-            .from('notifications')
-            .insert([{
-              user_id: usuario.id,
-              ticket_id: notif.ticket_id || null,
-              type: notif.type,
-              title: notif.title,
-              message: notif.message,
-              metadata: notif.metadata || {},
-              created_at: new Date().toISOString()
-            }])
-            .select()
-            .single();
-          
-          if (error) throw error;
-          
+          await supabase.from('notifications').update({ is_read: true }).eq('id', id);
           set(state => ({
-            notificaciones: [data, ...state.notificaciones].slice(0, 50)
+            notificaciones: state.notificaciones.map(n => n.id === id ? { ...n, is_read: true } : n)
           }));
-        } catch (error: any) {
-          console.error('Error agregando notificación:', error);
-        }
-      },
-
-      marcarNotificacionLeida: async (id: string) => {
-        try {
-          const { error } = await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('id', id);
-          
-          if (error) throw error;
-          
-          set(state => ({
-            notificaciones: state.notificaciones.map(n => 
-              n.id === id ? { ...n, is_read: true } : n
-            )
-          }));
-        } catch (error: any) {
-          console.error('Error marcando notificación:', error);
-        }
+        } catch (err) { console.error('Error marcando notificación:', err); }
       },
 
       marcarTodasLeidas: async () => {
         const usuario = get().usuarioActual;
         if (!usuario) return;
-
         try {
-          const { error } = await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .eq('user_id', usuario.id)
-            .eq('is_read', false);
-          
-          if (error) throw error;
-          
+          await supabase.from('notifications').update({ is_read: true })
+            .eq('user_id', usuario.id).eq('is_read', false);
           set(state => ({
             notificaciones: state.notificaciones.map(n => ({ ...n, is_read: true }))
           }));
-        } catch (error: any) {
-          console.error('Error marcando todas:', error);
-        }
+        } catch (err) { console.error('Error marcando todas:', err); }
       },
 
-      eliminarNotificacion: async (id: string) => {
+      eliminarNotificacion: async (id) => {
         try {
-          const { error } = await supabase
-            .from('notifications')
-            .delete()
-            .eq('id', id);
-          
-          if (error) throw error;
-          
-          set(state => ({
-            notificaciones: state.notificaciones.filter(n => n.id !== id)
-          }));
-        } catch (error: any) {
-          console.error('Error eliminando notificación:', error);
-        }
+          await supabase.from('notifications').delete().eq('id', id);
+          set(state => ({ notificaciones: state.notificaciones.filter(n => n.id !== id) }));
+        } catch (err) { console.error('Error eliminando notificación:', err); }
       },
 
-      obtenerNotificacionesNoLeidas: () => 
-        get().notificaciones.filter(n => !n.is_read),
-
-      // ========== REALTIME ==========
+      // ─── REALTIME ─────────────────────────────────────────
       SuscribirseNotificaciones: () => {
         const usuario = get().usuarioActual;
         if (!usuario) return () => {};
 
         const channel = supabase
-          .channel(`notifications:${usuario.id}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${usuario.id}`
-            },
-            (payload) => {
-              const nuevaNotif = payload.new as Notification;
-              set(state => ({
-                notificaciones: [nuevaNotif, ...state.notificaciones].slice(0, 50)
-              }));
-            }
-          )
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${usuario.id}`
-            },
-            (payload) => {
-              const actualizada = payload.new as Notification;
-              set(state => ({
-                notificaciones: state.notificaciones.map(n => 
-                  n.id === actualizada.id ? actualizada : n
-                )
-              }));
-            }
-          )
+          .channel(`notif-${usuario.id}`)
+          .on('postgres_changes', {
+            event: 'INSERT', schema: 'public', table: 'notifications',
+            filter: `user_id=eq.${usuario.id}`
+          }, (payload) => {
+            const nueva = payload.new as Notificacion;
+            set(state => ({
+              notificaciones: [nueva, ...state.notificaciones].slice(0, 50)
+            }));
+          })
+          .on('postgres_changes', {
+            event: 'UPDATE', schema: 'public', table: 'notifications',
+            filter: `user_id=eq.${usuario.id}`
+          }, (payload) => {
+            const actualizada = payload.new as Notificacion;
+            set(state => ({
+              notificaciones: state.notificaciones.map(n => n.id === actualizada.id ? actualizada : n)
+            }));
+          })
+          .on('postgres_changes', {
+            event: 'DELETE', schema: 'public', table: 'notifications',
+            filter: `user_id=eq.${usuario.id}`
+          }, (payload) => {
+            set(state => ({
+              notificaciones: state.notificaciones.filter(n => n.id !== payload.old.id)
+            }));
+          })
           .subscribe();
 
-        return () => {
-          supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
       },
 
-      // ========== UTILIDADES ==========
-      limpiarError: () => set({ error: null })
+      limpiarError: () => set({ error: null }),
     }),
-    
     {
-      name: 'helpdesk-auth-storage',
+      name: 'bap-auth-storage',
       partialize: (state) => ({
         usuarioActual: state.usuarioActual,
         isAuthenticated: state.isAuthenticated,
-        usuarios: state.usuarios
-      })
+        usuarios: state.usuarios,
+      }),
     }
   )
 );
