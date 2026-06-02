@@ -1,5 +1,5 @@
 // =============================================
-// PÁGINA: DASHBOARD POR ÁREA
+// PÁGINA: DASHBOARD POR ÁREA (Supervisor)
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
 // =============================================
 
@@ -12,9 +12,11 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 import {
-  RefreshCw, Ticket, Building2, Tag, Clock,
-  CheckCircle, ClipboardList, TrendingUp, Filter
+  RefreshCw, Ticket, Building2, Tag, Users,
+  ClipboardList, CheckCircle, FileX, TrendingUp, FileCheck, Clock, Layers,
+  Download, Filter
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const AREAS = [
   'Logística y Calidad',
@@ -26,314 +28,575 @@ const AREAS = [
   'Proyectos'
 ];
 
-const CATEGORIAS: Record<string, string> = {
-  hardware_computadora: 'Hardware - PC',
-  hardware_impresora: 'Hardware - Impresora',
-  hardware_red: 'Hardware - Red',
-  hardware_telefonia: 'Hardware - Telefonía',
-  software_instalacion: 'Software - Instalación',
-  software_error: 'Software - Error',
-  software_actualizacion: 'Software - Actualización',
-  correo_electronico: 'Correo Electrónico',
-  internet_wifi: 'Internet - WiFi',
-  internet_cable: 'Internet - Cable',
-  sistema_interno: 'Sistema Interno',
-  seguridad: 'Seguridad',
-  cuenta_acceso: 'Cuenta / Acceso',
-  otro: 'Otro',
+const CATEGORIAS = [
+  'Hardware', 'Software', 'Redes', 'Accesos',
+  'Impresoras', 'Correo', 'Reportes', 'Otros'
+];
+
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const COLORES = {
+  verde: '#80c398',
+  amarillo: '#fbe066',
+  rojo: '#ea4c5b',
+  azul: '#6ab088',
+  naranja: '#f5a623',
+  morado: '#a855f7',
+  cyan: '#06b6d4'
 };
 
-const COLORES = ['#80c398', '#fbe066', '#ea4c5b', '#6ab088', '#f5a623', '#3b82f6', '#a855f7', '#06b6d4'];
-
-const ESTADO_LABELS: Record<string, string> = {
-  nuevo: 'Nuevo',
-  asignado: 'Asignado',
-  planificado: 'Planificado',
-  resuelto: 'Resuelto',
-  cerrado: 'Cerrado',
-};
-
-const ESTADO_COLORES: Record<string, string> = {
+const COLORES_ESTADOS: Record<string, string> = {
   nuevo: '#fbe066',
-  asignado: '#6ab088',
+  asignado: '#3b82f6',
   planificado: '#a855f7',
-  resuelto: '#80c398',
-  cerrado: '#9ca3af',
+  resuelto: '#22c55e',
+  cerrado: '#6b7280'
+};
+
+const COLORES_CATEGORIAS_TABLA: Record<string, string> = {
+  'Hardware': '#80c398',
+  'Software': '#fbe066',
+  'Redes': '#ea4c5b',
+  'Accesos': '#6ab088',
+  'Impresoras': '#f5a623',
+  'Correo': '#3b82f6',
+  'Reportes': '#a855f7',
+  'Otros': '#6b7280'
+};
+
+const generarColoresAdicionales = (cantidad: number): string[] => {
+  const colores: string[] = [];
+  for (let i = 0; i < cantidad; i++) {
+    const hue = Math.floor((i * 137.508) % 360);
+    const saturation = 65 + (i % 20);
+    const lightness = 55 + (i % 15);
+    colores.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+  }
+  return colores;
 };
 
 export default function DashboardAreaPage() {
   const navigate = useNavigate();
-  const { usuarioActual } = useAuthStore();
-  const { tickets, cargarTickets, isLoading } = useTicketStore();
-
-  const [areaSeleccionada, setAreaSeleccionada] = useState<string>(
-    usuarioActual?.area || AREAS[0]
-  );
-  const [mesSeleccionado, setMesSeleccionado] = useState<number>(new Date().getMonth());
-  const [anioSeleccionado, setAnioSeleccionado] = useState<number>(new Date().getFullYear());
+  const { usuarioActual, usuarios } = useAuthStore();
+  const ticketStore = useTicketStore();
+  
+  const [filtroMesGlobal, setFiltroMesGlobal] = useState<string>('todos');
+  const [filtroAnioGlobal, setFiltroAnioGlobal] = useState<number>(-1);
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    cargarTickets();
+    const cargarDatos = async () => {
+      try {
+        await ticketStore.cargarTickets();
+        await useAuthStore.getState().cargarUsuarios();
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+      } finally {
+        setCargando(false);
+      }
+    };
+    cargarDatos();
   }, []);
 
-  // Filtrar tickets por área y período
-  const ticketsFiltrados = useMemo(() => {
-    return tickets.filter((t: any) => {
-      const area = t.area_solicitante || t.area || '';
-      const fecha = new Date(t.fechaCreacion || t.created_at || '');
-      const mismoMes = fecha.getMonth() === mesSeleccionado;
-      const mismoAnio = fecha.getFullYear() === anioSeleccionado;
-      return area === areaSeleccionada && mismoMes && mismoAnio;
+  // Filtrar tickets por área del usuario actual
+  const ticketsFiltradosGlobal = useMemo(() => {
+    return ticketStore.tickets.filter((t: any) => {
+      const solicitante = usuarios.find((u: any) => u.id === t.solicitanteId);
+      const areaCoincide = solicitante?.area === usuarioActual?.area;
+      
+      const fecha = new Date(t.fechaCreacion);
+      const cumpleAnio = filtroAnioGlobal === -1 || fecha.getFullYear() === filtroAnioGlobal;
+      const cumpleMes = filtroMesGlobal === 'todos' || fecha.getMonth() === parseInt(filtroMesGlobal);
+      
+      return areaCoincide && cumpleAnio && cumpleMes;
     });
-  }, [tickets, areaSeleccionada, mesSeleccionado, anioSeleccionado]);
+  }, [ticketStore.tickets, usuarios, usuarioActual?.area, filtroMesGlobal, filtroAnioGlobal]);
 
   // Estadísticas generales
   const stats = useMemo(() => ({
-    total: ticketsFiltrados.length,
-    nuevo: ticketsFiltrados.filter((t: any) => t.estado === 'nuevo').length,
-    asignado: ticketsFiltrados.filter((t: any) => t.estado === 'asignado').length,
-    planificado: ticketsFiltrados.filter((t: any) => t.estado === 'planificado').length,
-    resuelto: ticketsFiltrados.filter((t: any) => t.estado === 'resuelto').length,
-    cerrado: ticketsFiltrados.filter((t: any) => t.estado === 'cerrado').length,
-  }), [ticketsFiltrados]);
-
-  // Datos para gráfico por categoría
-  const dataCategorias = useMemo(() => {
-    const conteo: Record<string, number> = {};
-    ticketsFiltrados.forEach((t: any) => {
-      const cat = CATEGORIAS[t.categoria] || t.categoria || 'Otro';
-      conteo[cat] = (conteo[cat] || 0) + 1;
-    });
-    return Object.entries(conteo)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 6);
-  }, [ticketsFiltrados]);
+    total: ticketsFiltradosGlobal.length,
+    nuevo: ticketsFiltradosGlobal.filter((t: any) => t.estado === 'nuevo').length,
+    asignado: ticketsFiltradosGlobal.filter((t: any) => t.estado === 'asignado').length,
+    planificado: ticketsFiltradosGlobal.filter((t: any) => t.estado === 'planificado').length,
+    resuelto: ticketsFiltradosGlobal.filter((t: any) => t.estado === 'resuelto').length,
+    cerrado: ticketsFiltradosGlobal.filter((t: any) => t.estado === 'cerrado').length,
+  }), [ticketsFiltradosGlobal]);
 
   // Datos para gráfico por estado
-  const dataEstados = useMemo(() => {
-    return Object.entries(ESTADO_LABELS).map(([key, label]) => ({
-      name: label,
-      value: ticketsFiltrados.filter((t: any) => t.estado === key).length,
-      color: ESTADO_COLORES[key],
+  const datosPorEstado = useMemo(() => {
+    const conteo: Record<string, number> = {};
+    const estadosList = ['nuevo', 'asignado', 'planificado', 'resuelto', 'cerrado'];
+    estadosList.forEach(e => { conteo[e] = 0; });
+    ticketsFiltradosGlobal.forEach((t: any) => {
+      if (conteo[t.estado] !== undefined) {
+        conteo[t.estado]++;
+      }
+    });
+    return estadosList.map(e => ({
+      name: e.charAt(0).toUpperCase() + e.slice(1),
+      value: conteo[e],
+      color: COLORES_ESTADOS[e]
+    }));
+  }, [ticketsFiltradosGlobal]);
+
+  // Datos para gráfico por categoría
+  const datosPorCategoria = useMemo(() => {
+    const conteo: Record<string, number> = {};
+    CATEGORIAS.forEach(cat => { conteo[cat] = 0; });
+    ticketsFiltradosGlobal.forEach((t: any) => {
+      if (conteo[t.categoria] !== undefined) {
+        conteo[t.categoria]++;
+      }
+    });
+    return CATEGORIAS.map((cat, index) => ({
+      name: cat,
+      value: conteo[cat],
+      color: Object.values(COLORES)[index % Object.values(COLORES).length]
     })).filter(d => d.value > 0);
-  }, [ticketsFiltrados]);
+  }, [ticketsFiltradosGlobal]);
 
-  // Tickets recientes del área
-  const ticketsRecientes = useMemo(() => {
-    return [...ticketsFiltrados]
-      .sort((a: any, b: any) => new Date(b.fechaCreacion || b.created_at || 0).getTime() - new Date(a.fechaCreacion || a.created_at || 0).getTime())
+  // Datos para gráfico por subcategoría
+  const datosPorSubcategoria = useMemo(() => {
+    const conteo: Record<string, number> = {};
+    ticketsFiltradosGlobal.forEach((t: any) => {
+      let subcat = t.subcategoria;
+      if (!subcat && t.titulo) {
+        const partes = t.titulo.split(' - ');
+        if (partes.length > 1) {
+          subcat = partes[partes.length - 1].trim();
+        }
+      }
+      if (subcat) {
+        conteo[subcat] = (conteo[subcat] || 0) + 1;
+      }
+    });
+    const subcategoriasConDatos = Object.keys(conteo).filter(subcat => conteo[subcat] > 0);
+    const coloresUnicos = generarColoresAdicionales(subcategoriasConDatos.length);
+    return subcategoriasConDatos
+      .map((subcat, index) => ({
+        name: subcat,
+        value: conteo[subcat],
+        color: coloresUnicos[index]
+      }))
+      .sort((a, b) => b.value - a.value)
       .slice(0, 8);
-  }, [ticketsFiltrados]);
+  }, [ticketsFiltradosGlobal]);
 
-  const formatearFecha = (fecha: any): string => {
-    if (!fecha) return '-';
-    const d = new Date(fecha);
-    if (isNaN(d.getTime())) return '-';
-    return new Intl.DateTimeFormat('es-PE', {
-      timeZone: 'America/Lima',
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }).format(d);
+  // Top 5 usuarios por total de tickets
+  const datosPorUsuarioTotal = useMemo(() => {
+    const conteo: Record<string, any> = {};
+    ticketsFiltradosGlobal.forEach((t: any) => {
+      const solicitante = usuarios.find((u: any) => u.id === t.solicitanteId);
+      if (solicitante) {
+        const nombreCompleto = `${solicitante.nombre} ${solicitante.apellidos}`;
+        if (!conteo[nombreCompleto]) {
+          conteo[nombreCompleto] = { name: nombreCompleto, total: 0 };
+        }
+        conteo[nombreCompleto].total++;
+      }
+    });
+    const usuariosOrdenados = Object.values(conteo)
+      .sort((a: any, b: any) => b.total - a.total)
+      .slice(0, 5);
+    const coloresUsuarios = generarColoresAdicionales(usuariosOrdenados.length);
+    return usuariosOrdenados.map((d: any, i: number) => ({
+      ...d,
+      color: coloresUsuarios[i]
+    }));
+  }, [ticketsFiltradosGlobal, usuarios]);
+
+  // Tasa de completitud
+  const datosTasaEncuestas = useMemo(() => {
+    const enviadas = ticketsFiltradosGlobal.filter((t: any) => ['resuelto', 'cerrado'].includes(t.estado)).length;
+    const completadas = ticketsFiltradosGlobal.filter((t: any) => t.encuestaCompletada === true).length;
+    const pendientes = enviadas - completadas;
+    return [
+      { name: 'Completadas', value: completadas, color: COLORES.verde },
+      { name: 'Pendientes', value: pendientes, color: COLORES.rojo }
+    ];
+  }, [ticketsFiltradosGlobal]);
+
+  // Resumen por usuarios
+  const datosResumenPorUsuario = useMemo(() => {
+    const usuariosDelArea = usuarios.filter((u: any) => u.area === usuarioActual?.area);
+    const usuariosConTickets: Record<string, any> = {};
+    
+    usuariosDelArea.forEach((u: any) => {
+      const nombreCompleto = `${u.nombre} ${u.apellidos}`;
+      usuariosConTickets[nombreCompleto] = {
+        id: u.id,
+        nombre: nombreCompleto,
+        area: u.area,
+        rol: u.rol,
+        categorias: {} as Record<string, number>,
+        total: 0
+      };
+      CATEGORIAS.forEach(cat => {
+        usuariosConTickets[nombreCompleto].categorias[cat] = 0;
+      });
+    });
+    
+    ticketsFiltradosGlobal.forEach((t: any) => {
+      const solicitante = usuarios.find((u: any) => u.id === t.solicitanteId);
+      if (solicitante && usuariosConTickets[solicitante.nombre + ' ' + solicitante.apellidos]) {
+        const usuarioData = usuariosConTickets[solicitante.nombre + ' ' + solicitante.apellidos];
+        if (t.categoria && usuarioData.categorias[t.categoria] !== undefined) {
+          usuarioData.categorias[t.categoria]++;
+        }
+        usuarioData.total++;
+      }
+    });
+    
+    return Object.values(usuariosConTickets)
+      .sort((a: any, b: any) => b.total - a.total);
+  }, [ticketsFiltradosGlobal, usuarios, usuarioActual?.area]);
+
+  const recargarDatos = async () => {
+    setCargando(true);
+    await ticketStore.cargarTickets();
+    await useAuthStore.getState().cargarUsuarios();
+    setCargando(false);
   };
 
-  const meses = [
-    'Enero','Febrero','Marzo','Abril','Mayo','Junio',
-    'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
-  ];
-
-  const getEstadoStyle = (estado: string) => ({
-    backgroundColor: ESTADO_COLORES[estado] || '#e5e7eb',
-    color: estado === 'nuevo' ? '#92400e' : '#fff',
-    padding: '2px 10px',
-    borderRadius: 99,
-    fontSize: 12,
-    fontWeight: 600,
-    display: 'inline-block',
-  });
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <RefreshCw className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: COLORES.verde }} />
+          <p className="text-gray-600">Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl p-8 text-white relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #80c398 0%, #4a9b6e 100%)' }}>
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <Building2 className="w-7 h-7" />
-            <h1 className="text-2xl font-bold">Dashboard por Área</h1>
-          </div>
-          <p className="text-green-100 text-sm">
-            Estadísticas de tickets por área organizacional
-          </p>
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard de Supervisor</h1>
+          <p className="text-gray-500 mt-1">Vista de Todos los Usuarios de mi Área - Banco de Alimentos</p>
         </div>
-        <div className="absolute -right-8 -top-8 w-48 h-48 rounded-full opacity-10" style={{ background: '#fff' }} />
+        <button onClick={recargarDatos} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+          <RefreshCw className="w-4 h-4" />
+          Actualizar
+        </button>
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Área</label>
-            <select
-              value={areaSeleccionada}
-              onChange={e => setAreaSeleccionada(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
-            >
-              {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+      {/* FILTROS GLOBALES */}
+      <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl p-4 border border-emerald-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-emerald-600" />
+            <span className="font-semibold text-gray-700">Filtros Globales:</span>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Mes</label>
+          <div className="flex flex-wrap items-center gap-3">
             <select
-              value={mesSeleccionado}
-              onChange={e => setMesSeleccionado(Number(e.target.value))}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+              value={filtroMesGlobal}
+              onChange={(e) => setFiltroMesGlobal(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500"
             >
-              {meses.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              <option value="todos">Todos los Meses</option>
+              {MESES.map((mes, index) => (
+                <option key={index} value={index}>{mes}</option>
+              ))}
             </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Año</label>
+            
             <select
-              value={anioSeleccionado}
-              onChange={e => setAnioSeleccionado(Number(e.target.value))}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+              value={filtroAnioGlobal}
+              onChange={(e) => setFiltroAnioGlobal(parseInt(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500"
             >
-              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              <option value={-1}>Todos los Años</option>
+              {[2024, 2025, 2026, 2027].map(anio => (
+                <option key={anio} value={anio}>{anio}</option>
+              ))}
             </select>
+            
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium hover:shadow-lg transition-all"
+              style={{ backgroundColor: COLORES.verde }}
+            >
+              <Download className="w-4 h-4" />
+              Exportar a Excel
+            </button>
           </div>
-          <button
-            onClick={() => cargarTickets()}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ backgroundColor: '#80c398' }}
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
         </div>
       </div>
 
-      {/* Tarjetas de estadísticas */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[
-          { label: 'Total', value: stats.total, icon: Ticket, color: '#6ab088' },
-          { label: 'Nuevos', value: stats.nuevo, icon: ClipboardList, color: '#fbe066' },
-          { label: 'Asignados', value: stats.asignado, icon: Tag, color: '#6ab088' },
-          { label: 'Planificados', value: stats.planificado, icon: Clock, color: '#a855f7' },
-          { label: 'Resueltos', value: stats.resuelto, icon: CheckCircle, color: '#80c398' },
-          { label: 'Cerrados', value: stats.cerrado, icon: TrendingUp, color: '#9ca3af' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col items-center text-center">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2"
-              style={{ backgroundColor: color + '22' }}>
-              <Icon className="w-5 h-5" style={{ color }} />
+      {/* TARJETAS DE RESUMEN */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#fbe066' }}>
+              <Clock className="w-6 h-6 text-gray-800" />
             </div>
-            <div className="text-2xl font-bold text-gray-800">{value}</div>
-            <div className="text-xs text-gray-500 mt-1">{label}</div>
+            <div>
+              <p className="text-sm text-gray-500">Nuevos</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.nuevo}</p>
+            </div>
           </div>
-        ))}
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3b82f6' }}>
+              <Ticket className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Asignados</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.asignado}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#22c55e' }}>
+              <CheckCircle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Resueltos</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.resuelto}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#6b7280' }}>
+              <ClipboardList className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Cerrados</p>
+              <p className="text-2xl font-bold text-gray-800">{stats.cerrado}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Por categoría */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Tag className="w-4 h-4 text-green-500" />
+      {/* GRÁFICO 1: Tickets por Estado */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Ticket className="w-5 h-5" style={{ color: COLORES.verde }} />
+            Tickets por Estado
+          </h3>
+        </div>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={datosPorEstado}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                {datosPorEstado.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* GRÁFICO 2: Tickets por Categoría */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Tag className="w-5 h-5" style={{ color: COLORES.verde }} />
             Tickets por Categoría
-          </h2>
-          {dataCategorias.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-              <Filter className="w-10 h-10 mb-2 opacity-30" />
-              <p className="text-sm">Sin datos para el período seleccionado</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={dataCategorias} margin={{ top: 0, right: 10, left: -20, bottom: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" interval={0} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="value" name="Tickets" radius={[6,6,0,0]}>
-                  {dataCategorias.map((_, i) => (
-                    <Cell key={i} fill={COLORES[i % COLORES.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          </h3>
         </div>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={datosPorCategoria}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                {datosPorCategoria.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
-        {/* Por estado */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-green-500" />
-            Distribución por Estado
-          </h2>
-          {dataEstados.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-              <Filter className="w-10 h-10 mb-2 opacity-30" />
-              <p className="text-sm">Sin datos para el período seleccionado</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
+      {/* GRÁFICO 3: Tickets por Subcategoría */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Layers className="w-5 h-5" style={{ color: COLORES.verde }} />
+            Tickets por Subcategoría
+          </h3>
+        </div>
+        <div className="h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={datosPorSubcategoria} layout="vertical" margin={{ left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis type="number" tick={{ fontSize: 12 }} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={50} interval={0} />
+              <Tooltip />
+              <Bar dataKey="value" name="Tickets" radius={[0, 4, 4, 0]}>
+                {datosPorSubcategoria.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* GRÁFICO 4: Top 5 Usuarios */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Users className="w-5 h-5" style={{ color: COLORES.verde }} />
+            Top 5 Usuarios por Total de Tickets
+          </h3>
+        </div>
+        <div className="h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={datosPorUsuarioTotal} layout="vertical" margin={{ left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis type="number" tick={{ fontSize: 12 }} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={80} />
+              <Tooltip />
+              <Bar dataKey="total" name="Total Tickets" radius={[0, 4, 4, 0]}>
+                {datosPorUsuarioTotal.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* GRÁFICO 5: Tasa de Completitud */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-4">
+          <TrendingUp className="w-5 h-5" style={{ color: COLORES.verde }} />
+          Tasa de Completitud
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={dataEstados} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`} labelLine={false}>
-                  {dataEstados.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
+                <Pie data={datosTasaEncuestas} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" nameKey="name" label={(entry: any) => `${entry.name}: ${entry.value}`}>
+                  {datosTasaEncuestas.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-          )}
+          </div>
+          <div className="flex flex-col justify-center space-y-4">
+            <div className="p-4 rounded-xl" style={{ backgroundColor: '#ecfdf5' }}>
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-8 h-8" style={{ color: COLORES.verde }} />
+                <div>
+                  <p className="text-sm text-gray-600">Completadas</p>
+                  <p className="text-2xl font-bold" style={{ color: COLORES.verde }}>{datosTasaEncuestas[0]?.value || 0}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl" style={{ backgroundColor: '#fef2f2' }}>
+              <div className="flex items-center gap-3">
+                <FileX className="w-8 h-8" style={{ color: COLORES.rojo }} />
+                <div>
+                  <p className="text-sm text-gray-600">Pendientes</p>
+                  <p className="text-2xl font-bold" style={{ color: COLORES.rojo }}>{datosTasaEncuestas[1]?.value || 0}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Tabla de tickets recientes */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <ClipboardList className="w-4 h-4 text-green-500" />
-          Tickets Recientes — {areaSeleccionada}
-        </h2>
-        {ticketsRecientes.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <Ticket className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No hay tickets registrados para este período</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">#</th>
-                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">Título</th>
-                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">Categoría</th>
-                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">Estado</th>
-                  <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ticketsRecientes.map((t: any) => (
-                  <tr
-                    key={t.id}
-                    className="border-b border-gray-50 hover:bg-green-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/tickets/${t.id}`)}
-                  >
-                    <td className="py-2 px-3 text-gray-400 font-mono text-xs">#{t.id}</td>
-                    <td className="py-2 px-3 text-gray-800 font-medium max-w-xs truncate">{t.titulo || t.asunto}</td>
-                    <td className="py-2 px-3 text-gray-500">{CATEGORIAS[t.categoria] || t.categoria || '-'}</td>
-                    <td className="py-2 px-3">
-                      <span style={getEstadoStyle(t.estado)}>
-                        {ESTADO_LABELS[t.estado] || t.estado}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-gray-400 text-xs">{formatearFecha(t.fechaCreacion || t.created_at)}</td>
-                  </tr>
+      {/* TABLA: Resumen por Usuarios */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-white">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Users className="w-5 h-5" style={{ color: COLORES.verde }} />
+            Resumen: TODOS mis Usuarios x Categorías
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">Detalle individual de tickets por usuario del área</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b-2 border-gray-200" style={{ backgroundColor: '#f8f9fa' }}>
+              <tr>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Usuario</th>
+                <th className="text-center px-3 py-3 font-medium text-gray-600">Rol</th>
+                {CATEGORIAS.map(cat => (
+                  <th key={cat} className="text-center px-2 py-3 font-medium text-gray-600 min-w-[80px]">{cat}</th>
                 ))}
-              </tbody>
-            </table>
+                <th className="text-center px-4 py-3 font-medium text-gray-600 min-w-[80px]">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {datosResumenPorUsuario.map((usuario: any) => (
+                <tr key={usuario.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3 font-medium text-gray-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        style={{ backgroundColor: COLORES.verde }}>
+                        {usuario.nombre.charAt(0)}
+                      </div>
+                      <span>{usuario.nombre}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      usuario.rol === 'superadmin' ? 'bg-purple-100 text-purple-700' :
+                      usuario.rol === 'administrador' ? 'bg-blue-100 text-blue-700' :
+                      usuario.rol === 'supervisor' ? 'bg-orange-100 text-orange-700' :
+                      usuario.rol === 'tecnico' ? 'bg-green-100 text-green-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {usuario.rol.charAt(0).toUpperCase() + usuario.rol.slice(1)}
+                    </span>
+                  </td>
+                  {CATEGORIAS.map((cat) => {
+                    const count = usuario.categorias[cat] || 0;
+                    return (
+                      <td key={cat} className="px-2 py-3 text-center">
+                        {count > 0 ? (
+                          <span
+                            className="px-2 py-1 rounded-md text-xs font-semibold text-white shadow-sm"
+                            style={{ backgroundColor: COLORES_CATEGORIAS_TABLA[cat] }}
+                          >
+                            {count}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="px-4 py-3 text-center">
+                    <span
+                      className="px-3 py-1 rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: usuario.total > 0 ? COLORES.verde : '#9ca3af' }}>
+                      {usuario.total}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {datosResumenPorUsuario.length === 0 && (
+          <div className="px-6 py-8 text-center text-gray-500">
+            <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <p>No hay usuarios registrados en el área</p>
           </div>
         )}
       </div>
