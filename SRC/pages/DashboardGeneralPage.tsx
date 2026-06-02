@@ -550,13 +550,13 @@ export default function DashboardGeneralPage() {
   const [filtroMesGlobal, setFiltroMesGlobal] = useState<string>('todos');
   const [filtroAnioGlobal, setFiltroAnioGlobal] = useState<number>(-1);
   
-  // Filtros individuales de cada gráfico
+  // Filtros individuales de cada gráfico (CORREGIDOS)
   const [filtroEstadoGrafico1, setFiltroEstadoGrafico1] = useState('todos');
   const [filtroAreaGrafico2, setFiltroAreaGrafico2] = useState('todas');
-  const [filtroAreaGrafico3, setFiltroAreaGrafico3] = useState('todas');
-  const [filtroAreaGrafico4, setFiltroAreaGrafico4] = useState('todas');
+  const [filtroCategoriaGrafico3, setFiltroCategoriaGrafico3] = useState('todas'); // ✅ CORREGIDO
+  const [filtroSubcategoriaGrafico4, setFiltroSubcategoriaGrafico4] = useState('todas'); // ✅ CORREGIDO
   const [filtroAreaGrafico6, setFiltroAreaGrafico6] = useState('todas');
-  const [filtroAreaGrafico8, setFiltroAreaGrafico8] = useState('todas'); // ✅ NUEVO FILTRO GRÁFICO 8
+  const [filtroAreaGrafico8, setFiltroAreaGrafico8] = useState('todas');
   
   const [cargando, setCargando] = useState(true);
   
@@ -587,6 +587,13 @@ export default function DashboardGeneralPage() {
       return cumpleAnio && cumpleMes;
     });
   }, [ticketStore.tickets, filtroMesGlobal, filtroAnioGlobal]);
+
+  // =============================================
+  // ✅ NUEVO: Extraer subcategorías únicas para el dropdown
+  // =============================================
+ const subcategoriasDisponibles = useMemo(() => {
+  return TODAS_LAS_SUBCATEGORIAS;
+}, []);
   
   // =============================================
   // GRÁFICO 1: Tickets por Estado
@@ -654,18 +661,15 @@ export default function DashboardGeneralPage() {
   }, [ticketsGrafico2]);
   
   // =============================================
-  // GRÁFICO 3: Tickets por Categoría
+  // ✅ GRÁFICO 3: Tickets por Categoría (CORREGIDO)
   // =============================================
   const ticketsGrafico3 = useMemo(() => {
     let filtrados = [...ticketsFiltradosGlobal];
-    if (filtroAreaGrafico3 !== 'todas') {
-      filtrados = filtrados.filter((t: any) => {
-        const solicitante = usuarios.find((u: any) => u.id === t.solicitanteId);
-        return solicitante?.area === filtroAreaGrafico3;
-      });
+    if (filtroCategoriaGrafico3 !== 'todas') {
+      filtrados = filtrados.filter((t: any) => t.categoria === filtroCategoriaGrafico3);
     }
     return filtrados;
-  }, [ticketsFiltradosGlobal, filtroAreaGrafico3, usuarios]);
+  }, [ticketsFiltradosGlobal, filtroCategoriaGrafico3]);
   
   const datosPorCategoria = useMemo(() => {
     const conteo: Record<string, number> = {};
@@ -683,18 +687,28 @@ export default function DashboardGeneralPage() {
   }, [ticketsGrafico3]);
   
   // =============================================
-  // GRÁFICO 4: Tickets por Subcategoría
+  // ✅ GRÁFICO 4: Tickets por Subcategoría (CORREGIDO)
   // =============================================
   const ticketsGraficoSubcategorias = useMemo(() => {
     let filtrados = [...ticketsFiltradosGlobal];
-    if (filtroAreaGrafico4 !== 'todas') {
+    if (filtroSubcategoriaGrafico4 !== 'todas') {
       filtrados = filtrados.filter((t: any) => {
-        const solicitante = usuarios.find((u: any) => u.id === t.solicitanteId);
-        return solicitante?.area === filtroAreaGrafico4;
+        let subcat = t.subcategoria;
+        if (!subcat && t.titulo) {
+          const partes = t.titulo.split(' - ');
+          if (partes.length > 1) {
+            const posibleSubcat = partes[partes.length - 1].trim();
+            const encontrada = TODAS_LAS_SUBCATEGORIAS.find(s =>
+              s.toLowerCase() === posibleSubcat.toLowerCase()
+            );
+            subcat = encontrada || posibleSubcat;
+          }
+        }
+        return subcat === filtroSubcategoriaGrafico4;
       });
     }
     return filtrados;
-  }, [ticketsFiltradosGlobal, filtroAreaGrafico4, usuarios]);
+  }, [ticketsFiltradosGlobal, filtroSubcategoriaGrafico4]);
   
   const datosPorSubcategoria = useMemo(() => {
     const conteo: Record<string, number> = {};
@@ -795,7 +809,7 @@ export default function DashboardGeneralPage() {
   }, [ticketsFiltradosGlobal]);
   
   // =============================================
-  // ✅ GRÁFICO 8: Estado de Tickets por Áreas (Barras Apiladas)
+  // GRÁFICO 8: Estado de Tickets por Áreas (Barras Apiladas)
   // =============================================
   const ticketsGrafico8 = useMemo(() => {
     let filtrados = [...ticketsFiltradosGlobal];
@@ -1056,16 +1070,22 @@ export default function DashboardGeneralPage() {
         </div>
       </div>
       
-      {/* GRÁFICO 3: Tickets por Categoría */}
+      {/* ✅ GRÁFICO 3: Tickets por Categoría (CORREGIDO) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h3 className="font-semibold text-gray-800 flex items-center gap-2">
             <Tag className="w-5 h-5" style={{ color: COLORES.verde }} />
             Tickets por Categoría
           </h3>
-          <select value={filtroAreaGrafico3} onChange={(e) => setFiltroAreaGrafico3(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
-            <option value="todas">Todas las áreas</option>
-            {AREAS.map(area => (<option key={area} value={area}>{area}</option>))}
+          <select 
+            value={filtroCategoriaGrafico3} 
+            onChange={(e) => setFiltroCategoriaGrafico3(e.target.value)} 
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+          >
+            <option value="todas">Todas las categorías</option>
+            {CATEGORIAS.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
           </select>
         </div>
         <div className="h-80">
@@ -1085,7 +1105,7 @@ export default function DashboardGeneralPage() {
         </div>
       </div>
       
-      {/* GRÁFICO 4: Tickets por Subcategoría */}
+      {/* ✅ GRÁFICO 4: Tickets por Subcategoría (CORREGIDO) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h3 className="font-semibold text-gray-800 flex items-center gap-2">
@@ -1093,12 +1113,16 @@ export default function DashboardGeneralPage() {
             Tickets por Subcategoría
           </h3>
           <select
-            value={filtroAreaGrafico4}
-            onChange={(e) => setFiltroAreaGrafico4(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            value={filtroSubcategoriaGrafico4}
+            onChange={(e) => setFiltroSubcategoriaGrafico4(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm max-w-xs"
           >
-            <option value="todas">Todas las áreas</option>
-            {AREAS.map(area => (<option key={area} value={area}>{area}</option>))}
+            <option value="todas">Todas las subcategorías</option>
+            {subcategoriasDisponibles.map((subcat) => (
+              <option key={subcat} value={subcat}>
+                {subcat.length > 50 ? subcat.substring(0, 50) + '...' : subcat}
+              </option>
+            ))}
           </select>
         </div>
         <div className="h-96">
@@ -1221,7 +1245,7 @@ export default function DashboardGeneralPage() {
         </div>
       </div>
       
-      {/* ✅ GRÁFICO 8: Estado de Tickets por Áreas (Barras Apiladas) */}
+      {/* GRÁFICO 8: Estado de Tickets por Áreas (Barras Apiladas) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h3 className="font-semibold text-gray-800 flex items-center gap-2">

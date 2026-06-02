@@ -1,11 +1,12 @@
 // =============================================
 // APLICACIÓN PRINCIPAL — ROUTING COMPLETO
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
+// Con soporte para Modo Preview
 // =============================================
 
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './store/authStore';
+import { useAuthStore, PREVIEW_MODE } from './store/authStore';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -32,16 +33,34 @@ import NotificacionesPage from './pages/NotificacionesPage';
 // ─── Guards ───────────────────────────────────────────────────────────────────
 function RutaProtegida({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  
+  // MODO PREVIEW: Permitir acceso siempre
+  if (PREVIEW_MODE) {
+    return <>{children}</>;
+  }
+  
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function RutaPublica({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  
+  // MODO PREVIEW: Permitir ver login también
+  if (PREVIEW_MODE) {
+    return <>{children}</>;
+  }
+  
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 
 function RutaPorRol({ children, rolesPermitidos }: { children: React.ReactNode; rolesPermitidos: string[] }) {
   const { usuarioActual } = useAuthStore();
+  
+  // MODO PREVIEW: Permitir acceso a todos los roles
+  if (PREVIEW_MODE) {
+    return <>{children}</>;
+  }
+  
   if (!usuarioActual || !rolesPermitidos.includes(usuarioActual.rol)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -73,6 +92,13 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* Indicador de Modo Preview */}
+      {PREVIEW_MODE && (
+        <div className="fixed top-0 left-0 right-0 bg-yellow-400 text-yellow-900 text-center py-2 text-sm font-semibold z-50 shadow-lg">
+          🔓 MODO PREVIEW ACTIVO - Datos de demostración
+        </div>
+      )}
+      
       <Routes>
         {/* ── Públicas ── */}
         <Route path="/login" element={<RutaPublica><LoginPage /></RutaPublica>} />

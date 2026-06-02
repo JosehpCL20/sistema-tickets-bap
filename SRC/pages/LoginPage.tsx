@@ -1,12 +1,13 @@
 // =============================================
 // PÁGINA DE LOGIN
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
+// Con botón de Modo Preview
 // =============================================
 
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, PREVIEW_MODE } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { 
   LogIn, 
@@ -17,7 +18,8 @@ import {
   HelpCircle,
   Eye,
   EyeOff,
-  Heart
+  Heart,
+  Eye as EyeIcon
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -52,7 +54,6 @@ export default function LoginPage() {
     e.preventDefault();
     limpiarError();
     
-    // Guardar en localStorage si "Recordarme" está marcado
     if (recordarme) {
       localStorage.setItem('helpdesk_recordar', JSON.stringify({
         correo: correo,
@@ -63,6 +64,14 @@ export default function LoginPage() {
     }
     
     const exito = await login(correo, password);
+    if (exito) {
+      navigate('/dashboard');
+    }
+  };
+
+  const handlePreviewMode = async () => {
+    console.log('🔓 Activando modo preview...');
+    const exito = await login('preview', 'preview');
     if (exito) {
       navigate('/dashboard');
     }
@@ -80,7 +89,6 @@ export default function LoginPage() {
     }
 
     try {
-      // Enviar email de recuperación con Supabase
       const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacion, {
         redirectTo: `${window.location.origin}/recuperar-password`
       });
@@ -93,7 +101,6 @@ export default function LoginPage() {
                 ℹ️ Cada enlace solo se puede usar una vez. Si no lo recibes, puedes solicitar otro.` 
       });
       
-      // No cerrar el modal inmediatamente, dejar que el usuario vea el mensaje
       setTimeout(() => {
         setMensajeRecuperacion(null);
       }, 8000);
@@ -118,16 +125,13 @@ export default function LoginPage() {
           background: 'linear-gradient(135deg, #80c398 0%, #6ab088 50%, #5a9f7c 100%)'
         }}
       >
-        {/* Decoración de fondo */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl"></div>
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
           <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full blur-3xl"></div>
         </div>
 
-        {/* Contenido */}
         <div className="relative z-10 text-center">
-          {/* Logo grande */}
           <div className="mb-8">
             <div className="w-40 h-40 mx-auto bg-white rounded-3xl shadow-2xl flex items-center justify-center mb-6">
               <img 
@@ -147,7 +151,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Frase inspiradora */}
           <div className="mt-12 p-6 bg-white/10 backdrop-blur-sm rounded-2xl max-w-md mx-auto">
             <Heart className="w-8 h-8 text-white mx-auto mb-3" />
             <p className="text-white italic text-lg">
@@ -160,7 +163,6 @@ export default function LoginPage() {
       {/* Lado derecho - Formulario */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
         <div className="w-full max-w-md">
-          {/* Logo móvil */}
           <div className="lg:hidden text-center mb-8">
             <div className="w-24 h-24 mx-auto bg-white rounded-2xl shadow-lg flex items-center justify-center mb-4">
               <img 
@@ -173,7 +175,6 @@ export default function LoginPage() {
             <p className="text-gray-500">Banco de Alimentos Perú</p>
           </div>
 
-          {/* Card de login */}
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -184,7 +185,6 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Mensaje de error */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -193,7 +193,6 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Correo */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Correo Electrónico
@@ -212,7 +211,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Contraseña */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Contraseña
@@ -238,7 +236,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Recordarme y Recuperar contraseña */}
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
@@ -260,7 +257,6 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Botón de login */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -283,7 +279,37 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Info de ayuda */}
+            {/* Botón de Modo Preview */}
+            {PREVIEW_MODE && (
+              <div className="mt-4">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">o</span>
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={handlePreviewMode}
+                  disabled={isLoading}
+                  className="mt-4 w-full py-3.5 px-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-lg"
+                  style={{ backgroundColor: '#f0ad4e' }}
+                  onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = '#ec971f')}
+                  onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = '#f0ad4e')}
+                >
+                  <EyeIcon className="w-5 h-5" />
+                  Entrar en Modo Preview
+                </button>
+                
+                <p className="text-xs text-center text-gray-500 mt-2">
+                  🔓 Acceso de demostración sin autenticación
+                </p>
+              </div>
+            )}
+
             <div className="mt-6 p-4 bg-blue-50 rounded-xl flex items-start gap-3">
               <HelpCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">
@@ -297,7 +323,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Footer */}
           <p className="text-center text-sm text-gray-500 mt-6">
             © 2026 Banco de Alimentos Perú. Todos los derechos reservados.
           </p>

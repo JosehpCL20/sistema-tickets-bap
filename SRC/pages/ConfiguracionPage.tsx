@@ -105,12 +105,27 @@ export default function ConfiguracionPage() {
   );
 
   const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
-    <button onClick={onChange}
-      className={`relative w-12 h-6 rounded-full transition-colors ${checked ? 'bg-emerald-500' : 'bg-gray-300'}`}
-      style={checked ? { backgroundColor: '#80c398' } : {}}>
-      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-7' : 'translate-x-1'}`} />
-    </button>
-  );
+  <button 
+    onClick={onChange}
+    type="button"
+    className="relative rounded-full transition-colors duration-300 focus:outline-none cursor-pointer shadow-inner"
+    style={{
+      width: '60px',
+      height: '32px',
+      backgroundColor: checked ? '#80c398' : '#d1d5db',
+      padding: '4px'
+    }}
+  >
+    <span
+      className="absolute top-1/2 -translate-y-1/2 rounded-full bg-white shadow-md transition-all duration-300 ease-in-out"
+      style={{
+        width: '24px',
+        height: '24px',
+        left: checked ? '32px' : '4px'
+      }}
+    />
+  </button>
+);
 
   return (
     <div className="space-y-6 max-w-4xl">

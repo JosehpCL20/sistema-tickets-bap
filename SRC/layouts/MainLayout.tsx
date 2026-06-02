@@ -287,7 +287,9 @@ export default function MainLayout() {
         {/* Navegación */}
         <nav 
           className="p-4 space-y-1 overflow-y-auto"
-          style={{ maxHeight: 'calc(100vh - 200px)' }}
+          style={{ maxHeight: 'calc(100vh - 230px)',
+            paddingBottom: '10px'
+           }}
         >
           {menuFiltrado.map((item) => {
             const Icon = item.icon;
@@ -298,6 +300,7 @@ export default function MainLayout() {
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
+                end={item.path === '/tickets' || item.path === '/dashboard' || item.path === '/usuarios'}
                 className={({ isActive }) => 
                   `flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
                     isActive 

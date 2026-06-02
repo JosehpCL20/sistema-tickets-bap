@@ -1,12 +1,16 @@
 // =============================================
 // STORE DE AUTENTICACIÓN — Zustand + Supabase
-// Fixes: avatar fallback, preferencias con campo sin tilde
+// Con soporte para Modo Preview
 // =============================================
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
 import type { User, UserRole, UserPreferences, Notificacion } from '../types';
+import { usuarioMock, usuariosMock, notificacionesMock } from '../mockData';
+
+// Detectar modo preview
+const PREVIEW_MODE = import.meta.env.VITE_PREVIEW_MODE === 'true';
 
 interface AuthState {
   usuarioActual: User | null;
@@ -64,11 +68,30 @@ export const useAuthStore = create<AuthState>()(
       // ─── LOGIN ────────────────────────────────────────────
       login: async (correo, password) => {
         set({ isLoading: true, error: null });
+        
+        // MODO PREVIEW: Saltar autenticación real
+        if (PREVIEW_MODE) {
+          console.log('🔓 MODO PREVIEW ACTIVO - Saltando autenticación');
+          set({ 
+            usuarioActual: usuarioMock,
+            usuarios: usuariosMock,
+            notificaciones: notificacionesMock,
+            isAuthenticated: true, 
+            isLoading: false, 
+            error: null 
+          });
+          return true;
+        }
+        
         try {
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: correo, password
           });
-          if (authError) { set({ isLoading: false, error: 'Correo o contraseña incorrectos' }); return false; }
+          if (authError) { 
+            console.error('Error Supabase Auth:', authError);
+            set({ isLoading: false, error: `Error ${authError.status}: ${authError.message}` }); 
+            return false; 
+          }
 
           const { data: usuario, error: userError } = await supabase
             .from('users').select('*').eq('correo', correo).single();
@@ -80,7 +103,6 @@ export const useAuthStore = create<AuthState>()(
           const { data: prefs } = await supabase
             .from('user_preferences').select('*').eq('user_id', usuario.id).single();
 
-          // Mapear nombres de columnas BD → interfaz (sin tilde)
           const preferencias: UserPreferences | null = prefs ? {
             ...prefs,
             tamano_texto: prefs.tamano_texto ?? 100,
@@ -104,12 +126,29 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        // MODO PREVIEW: Solo limpiar estado
+        if (PREVIEW_MODE) {
+          set({ 
+            usuarioActual: null, 
+            isAuthenticated: false, 
+            notificaciones: [], 
+            usuarios: [] 
+          });
+          return;
+        }
+        
         await supabase.auth.signOut();
         set({ usuarioActual: null, isAuthenticated: false, notificaciones: [], usuarios: [] });
       },
 
       // ─── USUARIOS ─────────────────────────────────────────
       cargarUsuarios: async () => {
+        // MODO PREVIEW: Usar datos mock
+        if (PREVIEW_MODE) {
+          set({ usuarios: usuariosMock });
+          return;
+        }
+        
         try {
           const { data, error } = await supabase
             .from('users').select('*').eq('activo', true).order('nombre');
@@ -127,6 +166,17 @@ export const useAuthStore = create<AuthState>()(
       obtenerSupervisores: () => get().usuarios.filter(u => u.rol === 'supervisor' && u.activo),
 
       actualizarUsuario: async (id, datos) => {
+        // MODO PREVIEW: Actualizar solo en memoria
+        if (PREVIEW_MODE) {
+          set(state => ({
+            usuarios: state.usuarios.map(u => u.id === id ? { ...u, ...datos } : u),
+            usuarioActual: state.usuarioActual?.id === id
+              ? { ...state.usuarioActual, ...datos }
+              : state.usuarioActual
+          }));
+          return;
+        }
+        
         try {
           const updatePayload: any = {
             fecha_modificacion: new Date().toISOString(),
@@ -158,6 +208,14 @@ export const useAuthStore = create<AuthState>()(
       actualizarPreferencias: async (datos) => {
         const usuario = get().usuarioActual;
         if (!usuario) return;
+        
+        // MODO PREVIEW: Actualizar solo en memoria
+        if (PREVIEW_MODE) {
+          const nuevasPrefs = { ...(usuario.preferencias || {}), ...datos } as UserPreferences;
+          set({ usuarioActual: { ...usuario, preferencias: nuevasPrefs } });
+          return;
+        }
+        
         try {
           const payload = { ...datos, updated_at: new Date().toISOString() };
           const { data: existing } = await supabase
@@ -184,6 +242,12 @@ export const useAuthStore = create<AuthState>()(
 
       // ─── NOTIFICACIONES ───────────────────────────────────
       cargarNotificaciones: async () => {
+        // MODO PREVIEW: Usar datos mock
+        if (PREVIEW_MODE) {
+          set({ notificaciones: notificacionesMock });
+          return;
+        }
+        
         const usuario = get().usuarioActual;
         if (!usuario) return;
         try {
@@ -200,6 +264,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       marcarNotificacionLeida: async (id) => {
+        // MODO PREVIEW: Actualizar solo en memoria
+        if (PREVIEW_MODE) {
+          set(state => ({
+            notificaciones: state.notificaciones.map(n => n.id === id ? { ...n, is_read: true } : n)
+          }));
+          return;
+        }
+        
         try {
           await supabase.from('notifications').update({ is_read: true }).eq('id', id);
           set(state => ({
@@ -209,6 +281,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       marcarTodasLeidas: async () => {
+        // MODO PREVIEW: Actualizar solo en memoria
+        if (PREVIEW_MODE) {
+          set(state => ({
+            notificaciones: state.notificaciones.map(n => ({ ...n, is_read: true }))
+          }));
+          return;
+        }
+        
         const usuario = get().usuarioActual;
         if (!usuario) return;
         try {
@@ -221,6 +301,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       eliminarNotificacion: async (id) => {
+        // MODO PREVIEW: Actualizar solo en memoria
+        if (PREVIEW_MODE) {
+          set(state => ({ notificaciones: state.notificaciones.filter(n => n.id !== id) }));
+          return;
+        }
+        
         try {
           await supabase.from('notifications').delete().eq('id', id);
           set(state => ({ notificaciones: state.notificaciones.filter(n => n.id !== id) }));
@@ -229,6 +315,11 @@ export const useAuthStore = create<AuthState>()(
 
       // ─── REALTIME ─────────────────────────────────────────
       SuscribirseNotificaciones: () => {
+        // MODO PREVIEW: No suscribirse a cambios en tiempo real
+        if (PREVIEW_MODE) {
+          return () => {};
+        }
+        
         const usuario = get().usuarioActual;
         if (!usuario) return () => {};
 
@@ -277,3 +368,6 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+// Exportar para uso en otros componentes
+export { PREVIEW_MODE };
