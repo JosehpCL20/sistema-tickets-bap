@@ -314,7 +314,7 @@ export default function UsuarioDetallePage() {
       {/* HEADER */}
       <div className="flex justify-between items-center bg-white p-5 rounded-xl shadow-lg">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div>
