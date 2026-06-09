@@ -1,5 +1,6 @@
 // =============================================
 // TICKETS ATENDIDOS - ✅ CON TIEMPO ESTIMADO EN AMBAS PESTAÑAS
+// ✅ Columna "Estado" eliminada (redundante)
 // Para: Técnico, Administrador, Super Admin
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
 // =============================================
@@ -11,7 +12,7 @@ import { useAuthStore } from '../store/authStore';
 import { useTicketStore } from '../store/ticketStore';
 import { supabase } from '../lib/supabaseClient';
 import { 
-  Search, CheckCircle, XCircle, User, ChevronLeft, ChevronRight,
+  ArrowLeft, Search, CheckCircle, XCircle, User, ChevronLeft, ChevronRight,
   Calendar, Clock, FileCheck, Timer, Lock, Eye, RotateCcw
 } from 'lucide-react';
 import type { TicketStatus, TicketPriority } from '../types';
@@ -31,7 +32,6 @@ export default function TicketsAtendidosPage() {
       t.estado === (pestanaActiva === 'resueltos' ? 'resuelto' : 'cerrado')
     );
     
-    // ✅ Si es técnico, filtrar por tickets que él atendió
     if (usuarioActual?.rol === 'tecnico') {
       lista = lista.filter(t => 
         String(t.tecnico_tomo_id) === String(usuarioActual.id) ||
@@ -59,7 +59,6 @@ export default function TicketsAtendidosPage() {
     return ticketsAtendidos.slice(inicio, inicio + filasPorPagina);
   }, [ticketsAtendidos, paginaActual, filasPorPagina]);
 
-  // ✅ FORMATEAR FECHA - HORA LIMA
   const formatearFecha = (fecha: any): string => {
     if (!fecha || fecha === '' || fecha === null || fecha === undefined) return '-';
     const date = new Date(fecha);
@@ -75,10 +74,7 @@ export default function TicketsAtendidosPage() {
     }).format(date);
   };
 
-  // ✅ CORREGIDO: Tiempo de solución = desde que el técnico TOMA el ticket hasta que lo RESUELVE
   const calcularTiempoSolucion = (ticket: any): string => {
-    // ✅ Usar fecha_tomada (cuando el técnico tomó el ticket) como inicio
-    // ✅ Usar fecha_resolucion (cuando se presionó "Resolver") como fin
     const inicio = ticket.fecha_tomada || ticket.fechaCreacion;
     const fin = ticket.fecha_resolucion;
     
@@ -163,15 +159,28 @@ export default function TicketsAtendidosPage() {
     return false;
   };
 
+  // ✅ CÁLCULO DE COLSPAN: 11 columnas para resueltos, 12 para cerrados
+  // (Antes era 12 y 13 respectivamente, ahora -1 por eliminación de columna Estado)
+  const colSpanVacio = pestanaActiva === 'resueltos' ? 11 : 12;
+
   return (
     <div className="space-y-6">
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Tickets Atendidos</h1>
-          <p className="text-gray-500 mt-1">
-            {pestanaActiva === 'resueltos' ? 'Tickets resueltos (pendientes de cierre)' : 'Tickets cerrados'}
-          </p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Tickets Atendidos</h1>
+            <p className="text-gray-500 mt-1">
+              {pestanaActiva === 'resueltos' ? 'Tickets resueltos (pendientes de cierre)' : 'Tickets cerrados'}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 px-4 py-2 rounded-lg">
           <FileCheck className="w-5 h-5 text-green-600" />
@@ -237,13 +246,11 @@ export default function TicketsAtendidosPage() {
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">Título</th>
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">Solicitante</th>
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">Técnico</th>
-                <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">Estado</th>
+                {/* ✅ ELIMINADA: Columna "Estado" (redundante) */}
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">Prioridad</th>
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">Categoría</th>
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">Fecha Apertura</th>
-                {/* ✅ CAMBIO: Tiempo de Solución corregido */}
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">⏱️ Tiempo de Solución</th>
-                {/* ✅ AGREGADO: Columna Tiempo Estimado (AHORA EN AMBAS PESTAÑAS) */}
                 <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">📊 Tiempo Estimado</th>
                 {pestanaActiva === 'cerrados' && (
                   <th className="text-left px-3 py-3 font-semibold text-gray-700 text-xs">⏱️ Tiempo de Cierre</th>
@@ -255,8 +262,7 @@ export default function TicketsAtendidosPage() {
             <tbody>
               {ticketsPaginados.length === 0 ? (
                 <tr>
-                  {/* ✅ Ajustar colSpan: 12 columnas para resueltos, 13 para cerrados */}
-                  <td colSpan={pestanaActiva === 'resueltos' ? 12 : 13} className="text-center py-12 text-gray-500">
+                  <td colSpan={colSpanVacio} className="text-center py-12 text-gray-500">
                     {pestanaActiva === 'resueltos' ? (
                       <CheckCircle className="w-12 h-12 text-green-300 mx-auto mb-2" />
                     ) : (
@@ -281,22 +287,16 @@ export default function TicketsAtendidosPage() {
                       </td>
                       <td className="px-3 py-3 text-xs text-gray-600">{solicitante ? `${solicitante.nombre} ${solicitante.apellidos}` : 'Desconocido'}</td>
                       <td className="px-3 py-3 text-xs text-gray-600">{tecnico ? `${tecnico.nombre} ${tecnico.apellidos}` : 'Sin asignar'}</td>
-                      <td className="px-3 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${ticket.estado === 'resuelto' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                          {ticket.estado === 'resuelto' ? 'Resuelto' : 'Cerrado'}
-                        </span>
-                      </td>
+                      {/* ✅ ELIMINADA: Celda de "Estado" */}
                       <td className="px-3 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${infoPrioridad.color}`}>{infoPrioridad.label}</span></td>
                       <td className="px-3 py-3 text-xs text-gray-600">{ticket.categoria || '-'}</td>
                       <td className="px-3 py-3 text-xs text-gray-600">{formatearFecha(ticket.fechaCreacion)}</td>
-                      {/* ✅ Tiempo de Solución corregido */}
                       <td className="px-3 py-3">
                         <span className="text-xs font-medium text-blue-600 flex items-center gap-1">
                           <Timer className="w-3 h-3" />
                           {calcularTiempoSolucion(ticket)}
                         </span>
                       </td>
-                      {/* ✅ AGREGADO: Columna Tiempo Estimado (AHORA EN AMBAS PESTAÑAS) */}
                       <td className="px-3 py-3">
                         <span className="text-xs font-medium text-gray-600">
                           {ticket.tiempo_estimado || '-'}

@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/authStore';
 import { useTicketStore } from '../store/ticketStore';
 import { supabase } from '../lib/supabaseClient';
 import { 
-  Search, Clock, AlertTriangle, User, ChevronLeft, ChevronRight,
+  ArrowLeft, Search, Clock, AlertTriangle, User, ChevronLeft, ChevronRight,
   Timer, Wrench, CheckCircle, PlayCircle, Calendar, Eye, X, Save,
   Users, AlertCircle, Loader2
 } from 'lucide-react';
@@ -208,13 +208,22 @@ export default function TicketsPorAtenderPage() {
     <div className="space-y-6">
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Tickets por Atender</h1>
-          <p className="text-gray-500 mt-1">
-            {usuarioActual?.rol === 'tecnico' 
-              ? 'Tus tickets asignados' 
-              : 'Tickets pendientes de atención'}
-          </p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Tickets por Atender</h1>
+            <p className="text-gray-500 mt-1">
+              {usuarioActual?.rol === 'tecnico' 
+                ? 'Tus tickets asignados' 
+                : 'Tickets pendientes de atención'}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 px-4 py-2 rounded-lg">
           <Clock className="w-5 h-5 text-amber-600" />

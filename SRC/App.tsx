@@ -29,12 +29,13 @@ import DashboardEncuestasPage from './pages/DashboardEncuestasPage';
 import RecuperarPasswordPage from './pages/RecuperarPasswordPage';
 import UsuarioDetallePage from './pages/UsuarioDetallePage';
 import NotificacionesPage from './pages/NotificacionesPage';
+import GestionEncuestasPage from './pages/GestionEncuestasPage';
+import EditorEncuestasPage from './pages/EditorEncuestasPage';
 
 // ─── Guards ───────────────────────────────────────────────────────────────────
 function RutaProtegida({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   
-  // MODO PREVIEW: Permitir acceso siempre
   if (PREVIEW_MODE) {
     return <>{children}</>;
   }
@@ -45,7 +46,6 @@ function RutaProtegida({ children }: { children: React.ReactNode }) {
 function RutaPublica({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   
-  // MODO PREVIEW: Permitir ver login también
   if (PREVIEW_MODE) {
     return <>{children}</>;
   }
@@ -56,7 +56,6 @@ function RutaPublica({ children }: { children: React.ReactNode }) {
 function RutaPorRol({ children, rolesPermitidos }: { children: React.ReactNode; rolesPermitidos: string[] }) {
   const { usuarioActual } = useAuthStore();
   
-  // MODO PREVIEW: Permitir acceso a todos los roles
   if (PREVIEW_MODE) {
     return <>{children}</>;
   }
@@ -170,18 +169,27 @@ function App() {
 
           {/* Notificaciones */}
           <Route path="notificaciones" element={<NotificacionesPage />} />
-        </Route>
 
-        {/* 404 */}
-        <Route path="*" element={
-          <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <h1 className="text-6xl font-bold text-gray-300">404</h1>
-              <p className="text-gray-500 mt-2">Página no encontrada</p>
-              <a href="/" className="mt-4 inline-block text-emerald-600 hover:underline">← Volver al inicio</a>
-            </div>
-          </div>
-        } />
+          {/* ✅ Gestión de Encuestas - AHORA DENTRO DEL MAINLAYOUT */}
+          <Route path="gestion-encuestas" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
+              <GestionEncuestasPage />
+            </RutaPorRol>
+          } />
+
+          <Route path="editor-encuestas" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
+              <EditorEncuestasPage />
+            </RutaPorRol>
+          } />
+
+          <Route path="editor-encuestas/:plantillaId" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
+              <EditorEncuestasPage />
+            </RutaPorRol>
+          } />
+
+        </Route>
       </Routes>
     </BrowserRouter>
   );

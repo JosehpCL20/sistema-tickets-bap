@@ -6,7 +6,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useTicketStore } from '../store/ticketStore';
-import { Search, Users, Ticket, CheckCircle, Clock, User } from 'lucide-react';
+import { ArrowLeft, Search, Users, Ticket, CheckCircle, Clock, User } from 'lucide-react';
 
 const avatarFallback = (nombre: string, apellidos = '') =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(`${nombre} ${apellidos}`.trim())}&background=80c398&color=fff&size=256`;
@@ -46,6 +46,13 @@ export default function MisUsuariosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Volver"
+        >
+          <ArrowLeft className="w-6 h-6 text-gray-600" />
+        </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Mis Usuarios</h1>
           <p className="text-gray-500 text-sm">Usuarios de tu área: <span className="font-medium">{usuarioActual?.area}</span></p>

@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
-  Bell, CheckCheck, Ticket, MessageSquare,
+  ArrowLeft,Bell, CheckCheck, Ticket, MessageSquare,
   CheckCircle, User, AlertTriangle, X, Info
 } from 'lucide-react';
 
@@ -52,14 +52,23 @@ export default function NotificacionesPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Bell className="w-6 h-6" style={{ color: '#80c398' }} />
-            Notificaciones
-          </h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día ✓'}
-          </p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <Bell className="w-6 h-6" style={{ color: '#80c398' }} />
+              Notificaciones
+            </h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día ✓'}
+            </p>
+          </div>
         </div>
         {noLeidas > 0 && (
           <button

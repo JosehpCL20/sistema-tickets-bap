@@ -12,7 +12,7 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 import {
-  RefreshCw, Ticket, Building2, Tag, Users,
+  ArrowLeft,RefreshCw, Ticket, Building2, Tag, Users,
   ClipboardList, CheckCircle, FileX, TrendingUp, FileCheck, Clock, Layers,
   Download, Filter
 } from 'lucide-react';
@@ -537,9 +537,18 @@ export default function DashboardAreaPage() {
     <div className="space-y-6">
       {/* HEADER */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard de Supervisor</h1>
-          <p className="text-gray-500 mt-1">Vista de Todos los Usuarios de mi Área - Banco de Alimentos</p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Dashboard de Supervisor</h1>
+            <p className="text-gray-500 mt-1">Vista de Todos los Usuarios de mi Área - Banco de Alimentos</p>
+          </div>
         </div>
         <button onClick={recargarDatos} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
           <RefreshCw className="w-4 h-4" />
