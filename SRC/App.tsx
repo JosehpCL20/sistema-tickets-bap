@@ -31,6 +31,7 @@ import UsuarioDetallePage from './pages/UsuarioDetallePage';
 import NotificacionesPage from './pages/NotificacionesPage';
 import GestionEncuestasPage from './pages/GestionEncuestasPage';
 import EditorEncuestasPage from './pages/EditorEncuestasPage';
+import EncuestaUsuarioFinalPage from './pages/EncuestaUsuarioFinalPage';
 
 // ─── Guards ───────────────────────────────────────────────────────────────────
 function RutaProtegida({ children }: { children: React.ReactNode }) {
@@ -176,6 +177,8 @@ function App() {
               <GestionEncuestasPage />
             </RutaPorRol>
           } />
+
+          <Route path="/encuesta/:encuestaToken" element={<EncuestaUsuarioFinalPage />} />
 
           <Route path="editor-encuestas" element={
             <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
