@@ -1,33 +1,32 @@
 // =============================================
-// PÁGINA: EDITOR DE ENCUESTAS (Creación/Edición Visual)
-// CON DATOS MOCK - Sin Supabase temporalmente
-// Para: superadmin, administrador
-// Sistema de Gestión de Tickets - Banco de Alimentos Perú
+// PÁGINA: EDITOR DE ENCUESTAS
+// Con placeholders transparentes y toggle corregido
 // =============================================
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Eye, Save, Plus, Type, Image as ImageIcon,
-  Trash2, Copy, X, ChevronDown, ChevronUp,
-  ToggleLeft, ToggleRight, GripVertical, Layout, List
+  ArrowLeft, Eye, Save, Plus, Image as ImageIcon,
+  Trash2, Copy, X, GripHorizontal, Layout,
+  Video, AlignLeft, Star, CheckCircle, AlertTriangle
 } from 'lucide-react';
 
 // =============================================
 // TIPOS
 // =============================================
 interface Opcion {
+  id: string;
   texto: string;
-  id?: string;
 }
 
 interface Pregunta {
-  id?: number;
+  id: string;
   texto: string;
-  tipo: 'multiple_choice' | 'short_text' | 'long_text' | 'scale';
+  tipo: 'multiple_choice' | 'checkbox' | 'short_text' | 'long_text' | 'scale' | 'dropdown';
   obligatoria: boolean;
   orden: number;
   opciones?: Opcion[];
+  imagen?: string;
 }
 
 interface PlantillaEncuesta {
@@ -39,92 +38,18 @@ interface PlantillaEncuesta {
 }
 
 // =============================================
-// PREGUNTAS PREDETERMINADAS (como en el mockup)
-// =============================================
-const PREGUNTAS_PREDETERMINADAS: Pregunta[] = [
-  {
-    id: 1,
-    texto: '¿El problema fue resuelto?',
-    tipo: 'multiple_choice',
-    obligatoria: true,
-    orden: 0,
-    opciones: [
-      { texto: 'Sí, completamente' },
-      { texto: 'Parcialmente' },
-      { texto: 'No fue resuelto' }
-    ]
-  },
-  {
-    id: 2,
-    texto: '¿Qué tan satisfecho estás con la atención recibida?',
-    tipo: 'multiple_choice',
-    obligatoria: true,
-    orden: 1,
-    opciones: [
-      { texto: 'Muy satisfecho' },
-      { texto: 'Satisfecho' },
-      { texto: 'Neutral' },
-      { texto: 'Insatisfecho' },
-      { texto: 'Muy insatisfecho' }
-    ]
-  },
-  {
-    id: 3,
-    texto: '¿El tiempo de respuesta fue adecuado?',
-    tipo: 'multiple_choice',
-    obligatoria: true,
-    orden: 2,
-    opciones: [
-      { texto: 'Sí, fue rápido' },
-      { texto: 'Fue aceptable' },
-      { texto: 'No, fue muy lento' }
-    ]
-  },
-  {
-    id: 4,
-    texto: '¿El agente demostró conocimiento para resolver tu solicitud?',
-    tipo: 'multiple_choice',
-    obligatoria: true,
-    orden: 3,
-    opciones: [
-      { texto: 'Sí' },
-      { texto: 'Fue aceptable' },
-      { texto: 'No' }
-    ]
-  },
-  {
-    id: 5,
-    texto: '¿Recomendarías este servicio a otro compañero?',
-    tipo: 'multiple_choice',
-    obligatoria: true,
-    orden: 4,
-    opciones: [
-      { texto: 'Sí' },
-      { texto: 'Tal vez' },
-      { texto: 'No' }
-    ]
-  },
-  {
-    id: 6,
-    texto: 'Comentarios adicionales',
-    tipo: 'short_text',
-    obligatoria: false,
-    orden: 5,
-    opciones: []
-  }
-];
-
-// =============================================
 // COMPONENTE PRINCIPAL
 // =============================================
 export default function EditorEncuestasPage() {
   const navigate = useNavigate();
   const { plantillaId } = useParams<{ plantillaId?: string }>();
-  
+
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mostrarVistaPrevia, setMostrarVistaPrevia] = useState(false);
-  
+  const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error'; texto: string } | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
   const [plantilla, setPlantilla] = useState<PlantillaEncuesta>({
     nombre: '',
     descripcion: '',
@@ -132,60 +57,49 @@ export default function EditorEncuestasPage() {
     preguntas: []
   });
 
-  // =============================================
-  // CARGAR PLANTILLA
-  // =============================================
   useEffect(() => {
     if (plantillaId) {
-      // EDITAR existente
+      cargarPlantilla(parseInt(plantillaId));
+    } else {
+      setCargando(false);
+    }
+  }, [plantillaId]);
+
+  const cargarPlantilla = async (id: number) => {
+    setCargando(true);
+    try {
       const guardadas = localStorage.getItem('plantillas_encuestas');
       if (guardadas) {
         const plantillas = JSON.parse(guardadas);
-        const encontrada = plantillas.find((p: any) => p.id === parseInt(plantillaId));
+        const encontrada = plantillas.find((p: any) => p.id === id);
         if (encontrada) {
           setPlantilla(encontrada);
         } else {
-          // Si no existe, cargar con predeterminadas
-          setPlantilla({
-            nombre: 'Predeterminada (Post-cierre)',
-            descripcion: 'Encuesta de satisfacción enviada automáticamente al cerrar tickets',
-            activa: true,
-            preguntas: PREGUNTAS_PREDETERMINADAS
-          });
+          setMensaje({ tipo: 'error', texto: 'Plantilla no encontrada' });
+          setTimeout(() => navigate('/gestion-encuestas'), 2000);
         }
-      } else {
-        setPlantilla({
-          nombre: 'Predeterminada (Post-cierre)',
-          descripcion: 'Encuesta de satisfacción enviada automáticamente al cerrar tickets',
-          activa: true,
-          preguntas: PREGUNTAS_PREDETERMINADAS
-        });
       }
-    } else {
-      // NUEVA encuesta - cargar con preguntas predeterminadas
-      setPlantilla({
-        nombre: 'Predeterminada (Post-cierre)',
-        descripcion: '',
-        activa: true,
-        preguntas: PREGUNTAS_PREDETERMINADAS
-      });
+    } catch (error) {
+      console.error('Error cargando:', error);
+      setMensaje({ tipo: 'error', texto: 'Error al cargar la plantilla' });
+    } finally {
+      setCargando(false);
     }
-    setCargando(false);
-  }, [plantillaId]);
+  };
 
   // =============================================
   // ACCIONES DE PREGUNTAS
   // =============================================
   const agregarPregunta = () => {
     const nuevaPregunta: Pregunta = {
-      id: Date.now(),
+      id: `preg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       texto: '',
       tipo: 'multiple_choice',
-      obligatoria: true,
+      obligatoria: false,
       orden: plantilla.preguntas.length,
       opciones: [
-        { texto: 'Opción 1' },
-        { texto: 'Opción 2' }
+        { id: `opt_${Date.now()}_1`, texto: '' },
+        { id: `opt_${Date.now()}_2`, texto: '' }
       ]
     };
     setPlantilla({
@@ -194,74 +108,143 @@ export default function EditorEncuestasPage() {
     });
   };
 
-  const eliminarPregunta = (index: number) => {
-    const nuevas = plantilla.preguntas.filter((_, i) => i !== index);
+  const eliminarPregunta = (id: string) => {
+    const nuevas = plantilla.preguntas.filter(p => p.id !== id);
     setPlantilla({
       ...plantilla,
       preguntas: nuevas.map((p, i) => ({ ...p, orden: i }))
     });
   };
 
-  const duplicarPregunta = (index: number) => {
-    const preguntaOriginal = plantilla.preguntas[index];
-    const nuevaPregunta: Pregunta = {
-      ...preguntaOriginal,
-      id: Date.now(),
+  const duplicarPregunta = (id: string) => {
+    const original = plantilla.preguntas.find(p => p.id === id);
+    if (!original) return;
+
+    const duplicada: Pregunta = {
+      ...original,
+      id: `preg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       orden: plantilla.preguntas.length,
-      opciones: preguntaOriginal.opciones?.map(o => ({ ...o }))
+      opciones: original.opciones?.map(o => ({
+        ...o,
+        id: `opt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }))
     };
+
+    const nuevas = [...plantilla.preguntas];
+    const index = nuevas.findIndex(p => p.id === id);
+    nuevas.splice(index + 1, 0, duplicada);
+
     setPlantilla({
       ...plantilla,
-      preguntas: [...plantilla.preguntas, nuevaPregunta]
+      preguntas: nuevas.map((p, i) => ({ ...p, orden: i }))
     });
   };
 
-  const actualizarPregunta = (index: number, campo: keyof Pregunta, valor: any) => {
-    const nuevas = [...plantilla.preguntas];
-    nuevas[index] = { ...nuevas[index], [campo]: valor };
+  const actualizarPregunta = (id: string, campo: keyof Pregunta, valor: any) => {
+    const nuevas = plantilla.preguntas.map(p =>
+      p.id === id ? { ...p, [campo]: valor } : p
+    );
     setPlantilla({ ...plantilla, preguntas: nuevas });
   };
 
-  const moverPregunta = (index: number, direccion: 'up' | 'down') => {
-    if ((direccion === 'up' && index === 0) || 
-        (direccion === 'down' && index === plantilla.preguntas.length - 1)) {
-      return;
-    }
+  // =============================================
+  // DRAG AND DROP
+  // =============================================
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === index) return;
+
     const nuevas = [...plantilla.preguntas];
-    const newIndex = direccion === 'up' ? index - 1 : index + 1;
-    [nuevas[index], nuevas[newIndex]] = [nuevas[newIndex], nuevas[index]];
+    const [movida] = nuevas.splice(dragIndex, 1);
+    nuevas.splice(index, 0, movida);
+
     setPlantilla({
       ...plantilla,
       preguntas: nuevas.map((p, i) => ({ ...p, orden: i }))
     });
+    setDragIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
   };
 
   // =============================================
   // ACCIONES DE OPCIONES
   // =============================================
-  const agregarOpcion = (preguntaIndex: number) => {
-    const nuevas = [...plantilla.preguntas];
-    const pregunta = nuevas[preguntaIndex];
-    if (!pregunta.opciones) pregunta.opciones = [];
-    pregunta.opciones.push({ texto: `Opción ${pregunta.opciones.length + 1}` });
+  const agregarOpcion = (preguntaId: string) => {
+    const nuevas = plantilla.preguntas.map(p => {
+      if (p.id === preguntaId) {
+        const opciones = p.opciones || [];
+        return {
+          ...p,
+          opciones: [...opciones, { id: `opt_${Date.now()}`, texto: '' }]
+        };
+      }
+      return p;
+    });
     setPlantilla({ ...plantilla, preguntas: nuevas });
   };
 
-  const eliminarOpcion = (preguntaIndex: number, opcionIndex: number) => {
-    const nuevas = [...plantilla.preguntas];
-    const pregunta = nuevas[preguntaIndex];
-    if (pregunta.opciones) {
-      pregunta.opciones = pregunta.opciones.filter((_, i) => i !== opcionIndex);
-    }
+  const eliminarOpcion = (preguntaId: string, opcionId: string) => {
+    const nuevas = plantilla.preguntas.map(p => {
+      if (p.id === preguntaId) {
+        return {
+          ...p,
+          opciones: p.opciones?.filter(o => o.id !== opcionId) || []
+        };
+      }
+      return p;
+    });
     setPlantilla({ ...plantilla, preguntas: nuevas });
   };
 
-  const actualizarOpcion = (preguntaIndex: number, opcionIndex: number, texto: string) => {
-    const nuevas = [...plantilla.preguntas];
-    const pregunta = nuevas[preguntaIndex];
-    if (pregunta.opciones) {
-      pregunta.opciones[opcionIndex] = { ...pregunta.opciones[opcionIndex], texto };
-    }
+  const actualizarOpcion = (preguntaId: string, opcionId: string, texto: string) => {
+    const nuevas = plantilla.preguntas.map(p => {
+      if (p.id === preguntaId) {
+        return {
+          ...p,
+          opciones: p.opciones?.map(o =>
+            o.id === opcionId ? { ...o, texto } : o
+          ) || []
+        };
+      }
+      return p;
+    });
+    setPlantilla({ ...plantilla, preguntas: nuevas });
+  };
+
+  // =============================================
+  // AGREGAR IMAGEN
+  // =============================================
+  const handleAgregarImagen = (preguntaId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const nuevas = plantilla.preguntas.map(p =>
+            p.id === preguntaId ? { ...p, imagen: event.target?.result as string } : p
+          );
+          setPlantilla({ ...plantilla, preguntas: nuevas });
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
+  const handleEliminarImagen = (preguntaId: string) => {
+    const nuevas = plantilla.preguntas.map(p =>
+      p.id === preguntaId ? { ...p, imagen: undefined } : p
+    );
     setPlantilla({ ...plantilla, preguntas: nuevas });
   };
 
@@ -270,18 +253,21 @@ export default function EditorEncuestasPage() {
   // =============================================
   const handleGuardar = async () => {
     if (!plantilla.nombre.trim()) {
-      alert('⚠️ Ingresa un nombre para la plantilla');
+      setMensaje({ tipo: 'error', texto: 'Ingresa un nombre para la plantilla' });
+      setTimeout(() => setMensaje(null), 3000);
       return;
     }
 
     if (plantilla.preguntas.length === 0) {
-      alert('⚠️ Agrega al menos una pregunta');
+      setMensaje({ tipo: 'error', texto: 'Agrega al menos una pregunta' });
+      setTimeout(() => setMensaje(null), 3000);
       return;
     }
 
     for (let i = 0; i < plantilla.preguntas.length; i++) {
       if (!plantilla.preguntas[i].texto.trim()) {
-        alert(`⚠️ La pregunta ${i + 1} no tiene texto`);
+        setMensaje({ tipo: 'error', texto: `La pregunta ${i + 1} no tiene texto` });
+        setTimeout(() => setMensaje(null), 3000);
         return;
       }
     }
@@ -294,26 +280,25 @@ export default function EditorEncuestasPage() {
       if (plantilla.id) {
         const index = plantillas.findIndex((p: any) => p.id === plantilla.id);
         if (index !== -1) {
-          plantillas[index] = {
-            ...plantilla,
-            fecha_modificacion: new Date().toISOString()
-          };
+          plantillas[index] = plantilla;
         }
       } else {
-        const nuevaPlantilla = {
+        plantillas.push({
           ...plantilla,
           id: Date.now(),
           fecha_creacion: new Date().toISOString()
-        };
-        plantillas.push(nuevaPlantilla);
+        });
       }
 
       localStorage.setItem('plantillas_encuestas', JSON.stringify(plantillas));
-      alert('✅ Encuesta guardada correctamente');
-      navigate('/gestion-encuestas');
+      setMensaje({ tipo: 'success', texto: '✅ Encuesta guardada correctamente' });
+      setTimeout(() => {
+        navigate('/gestion-encuestas');
+      }, 1500);
     } catch (error) {
       console.error('Error guardando:', error);
-      alert('❌ Error al guardar la encuesta');
+      setMensaje({ tipo: 'error', texto: 'Error al guardar la encuesta' });
+      setTimeout(() => setMensaje(null), 3000);
     } finally {
       setGuardando(false);
     }
@@ -328,304 +313,405 @@ export default function EditorEncuestasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* HEADER SUPERIOR - Como en el mockup */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="flex items-center justify-between px-4 py-3">
+  <>
+    {/* HEADER SUPERIOR FIJO */}
+    <div style={{
+      position: 'fixed',
+      top: '64px',
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      backgroundColor: 'white',
+      borderBottom: '1px solid #e5e7eb',
+      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+    }}>
+      <div className="flex items-center justify-between px-4 py-3">
+        <button
+          onClick={() => navigate('/gestion-encuestas')}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          title="Volver"
+        >
+          <ArrowLeft className="w-6 h-6 text-gray-600" />
+        </button>
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/gestion-encuestas')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            onClick={() => setMostrarVistaPrevia(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+            title="Vista Previa"
           >
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
+            <Eye className="w-5 h-5 text-gray-600" />
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setMostrarVistaPrevia(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Eye className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleGuardar}
-              disabled={guardando}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium disabled:opacity-50"
-              style={{ backgroundColor: '#80c398' }}
-            >
-              <Save className="w-5 h-5" />
-              Guardar Encuesta
-            </button>
-          </div>
+          <button
+            onClick={handleGuardar}
+            disabled={guardando}
+            className="flex items-center gap-2 px-5 py-2 rounded-full text-white font-medium disabled:opacity-50 hover:shadow-md transition-all"
+            style={{ backgroundColor: '#80c398' }}
+          >
+            <Save className="w-5 h-5" />
+            Guardar Encuesta
+          </button>
         </div>
       </div>
+    </div>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        {/* INFORMACIÓN DE LA PLANTILLA */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">🏷️</span>
-            <input
-              type="text"
-              value={plantilla.nombre}
-              onChange={e => setPlantilla({ ...plantilla, nombre: e.target.value })}
-              placeholder="Nombre de la plantilla"
-              className="flex-1 px-3 py-2 border-b-2 border-gray-300 focus:border-emerald-500 focus:outline-none text-lg font-bold"
-            />
+    {/* CONTENIDO - Con padding-top exacto para compensar la barra fija */}
+    <div style={{
+      paddingTop: '50px',
+      paddingBottom: '80px',
+      backgroundColor: '#f3f4f6',
+      minHeight: '100vh'
+    }}>
+      <div style={{ maxWidth: '896px', margin: '0 auto', padding: '0 16px' }}>
+
+        {/* MENSAJES DE ALERTA */}
+        {mensaje && (
+          <div className={`p-4 rounded-lg flex items-center gap-2 mb-4 ${
+            mensaje.tipo === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+          }`}>
+            {mensaje.tipo === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-500" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+            )}
+            <p className={mensaje.tipo === 'success' ? 'text-green-700' : 'text-red-700'}>
+              {mensaje.texto}
+            </p>
           </div>
+        )}
+
+        {/* BLOQUE 1: TÍTULO Y DESCRIPCIÓN */}
+        <div className="bg-white rounded-lg border-t-4 border-t-[#80c398] shadow-sm p-6 mb-4">
           <input
             type="text"
+            value={plantilla.nombre}
+            onChange={e => setPlantilla({ ...plantilla, nombre: e.target.value })}
+            placeholder="Título del formulario"
+            className="w-full px-0 py-2 border-b border-gray-200 focus:border-[#80c398] focus:outline-none text-3xl font-normal text-gray-800 placeholder-gray-300 mb-2"
+          />
+          <textarea
             value={plantilla.descripcion}
             onChange={e => setPlantilla({ ...plantilla, descripcion: e.target.value })}
             placeholder="Descripción del formulario"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm text-gray-500"
+            rows={1}
+            className="w-full px-0 py-2 border-b border-gray-200 focus:border-[#80c398] focus:outline-none text-sm text-gray-600 placeholder-gray-300 resize-none"
           />
         </div>
 
-        {/* PREGUNTAS */}
-        <div className="space-y-4">
-          {plantilla.preguntas.map((pregunta, index) => (
-            <PreguntaCard
-              key={pregunta.id || index}
-              pregunta={pregunta}
-              index={index}
-              total={plantilla.preguntas.length}
-              onUpdate={(campo, valor) => actualizarPregunta(index, campo, valor)}
-              onDelete={() => eliminarPregunta(index)}
-              onDuplicate={() => duplicarPregunta(index)}
-              onMove={(dir) => moverPregunta(index, dir)}
-              onAddOpcion={() => agregarOpcion(index)}
-              onDeleteOpcion={(optIndex) => eliminarOpcion(index, optIndex)}
-              onUpdateOpcion={(optIndex, texto) => actualizarOpcion(index, optIndex, texto)}
-            />
-          ))}
-        </div>
+        {/* BLOQUES DE PREGUNTAS */}
+        {plantilla.preguntas.map((pregunta, index) => (
+          <PreguntaCard
+            key={pregunta.id}
+            pregunta={pregunta}
+            index={index}
+            onUpdate={(campo, valor) => actualizarPregunta(pregunta.id, campo, valor)}
+            onDelete={() => eliminarPregunta(pregunta.id)}
+            onDuplicate={() => duplicarPregunta(pregunta.id)}
+            onAddOpcion={() => agregarOpcion(pregunta.id)}
+            onDeleteOpcion={(optId) => eliminarOpcion(pregunta.id, optId)}
+            onUpdateOpcion={(optId, texto) => actualizarOpcion(pregunta.id, optId, texto)}
+            onAgregarImagen={() => handleAgregarImagen(pregunta.id)}
+            onEliminarImagen={() => handleEliminarImagen(pregunta.id)}
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragEnd={handleDragEnd}
+            isDragging={dragIndex === index}
+          />
+        ))}
 
-        {/* BOTÓN AGREGAR PREGUNTA */}
-        <button
-          onClick={agregarPregunta}
-          className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-emerald-500 hover:text-emerald-600 transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Agregar Pregunta
-        </button>
+        {/* MENSAJE CUANDO NO HAY PREGUNTAS */}
+        {plantilla.preguntas.length === 0 && (
+          <div className="bg-white rounded-lg border border-dashed border-gray-300 p-12 text-center mb-4">
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Plus className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-800 mb-1">
+                Comienza a crear tu encuesta
+              </h3>
+              <p className="text-gray-500 text-sm mb-4">
+                Haz clic en el botón <strong>+</strong> para agregar tu primera pregunta
+              </p>
+              <button
+                onClick={agregarPregunta}
+                className="px-6 py-2 rounded-full text-white font-medium hover:shadow-md transition-all"
+                style={{ backgroundColor: '#80c398' }}
+              >
+                + Agregar primera pregunta
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* BOTÓN AGREGAR PREGUNTA AL FINAL */}
+        {plantilla.preguntas.length > 0 && (
+          <button
+            onClick={agregarPregunta}
+            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-[#80c398] hover:text-[#80c398] transition-colors flex items-center justify-center gap-2 mb-4"
+          >
+            <Plus className="w-5 h-5" />
+            Agregar pregunta
+          </button>
+        )}
       </div>
-
-      {/* PANEL LATERAL DE HERRAMIENTAS */}
-      <div className="fixed right-4 top-24 flex flex-col gap-2 z-30">
-        <ToolButton icon={<Plus className="w-5 h-5" />} label="Agregar pregunta" onClick={agregarPregunta} />
-        <ToolButton icon={<Type className="w-5 h-5" />} label="Agregar título" onClick={() => alert('Función próxima')} />
-        <ToolButton icon={<ImageIcon className="w-5 h-5" />} label="Agregar imagen" onClick={() => alert('Función próxima')} />
-        <ToolButton icon={<Layout className="w-5 h-5" />} label="Agregar sección" onClick={() => alert('Función próxima')} />
-        <ToolButton icon={<List className="w-5 h-5" />} label="Reordenar" onClick={() => alert('Usa las flechas de cada pregunta')} />
-      </div>
-
-      {/* MODAL VISTA PREVIA */}
-      {mostrarVistaPrevia && (
-        <ModalVistaPrevia
-          plantilla={plantilla}
-          onClose={() => setMostrarVistaPrevia(false)}
-        />
-      )}
     </div>
-  );
+
+    {/* MODAL VISTA PREVIA */}
+    {mostrarVistaPrevia && (
+      <ModalVistaPrevia
+        plantilla={plantilla}
+        onClose={() => setMostrarVistaPrevia(false)}
+      />
+    )}
+  </>
+);
 }
 
 // =============================================
-// COMPONENTE: TARJETA DE PREGUNTA (como en el mockup)
+// COMPONENTE: TARJETA DE PREGUNTA
 // =============================================
 function PreguntaCard({
   pregunta,
   index,
-  total,
   onUpdate,
   onDelete,
   onDuplicate,
-  onMove,
   onAddOpcion,
   onDeleteOpcion,
-  onUpdateOpcion
+  onUpdateOpcion,
+  onAgregarImagen,
+  onEliminarImagen,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  isDragging
 }: {
   pregunta: Pregunta;
   index: number;
-  total: number;
   onUpdate: (campo: keyof Pregunta, valor: any) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onMove: (dir: 'up' | 'down') => void;
   onAddOpcion: () => void;
-  onDeleteOpcion: (optIndex: number) => void;
-  onUpdateOpcion: (optIndex: number, texto: string) => void;
+  onDeleteOpcion: (optId: string) => void;
+  onUpdateOpcion: (optId: string, texto: string) => void;
+  onAgregarImagen: () => void;
+  onEliminarImagen: () => void;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
 }) {
-  const getTipoLabel = (tipo: string) => {
-    switch (tipo) {
-      case 'multiple_choice': return 'Opción Múltiple';
-      case 'short_text': return 'Respuesta Corta';
-      case 'long_text': return 'Respuesta Larga';
-      case 'scale': return 'Escala (1-5)';
-      default: return 'Opción Múltiple';
-    }
-  };
+  const esOpcionMultiple = pregunta.tipo === 'multiple_choice' || pregunta.tipo === 'checkbox' || pregunta.tipo === 'dropdown';
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3 relative">
-      {/* Icono de arrastrar */}
-      <div className="flex justify-center">
-        <GripVertical className="w-4 h-4 text-gray-400" />
-      </div>
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}
+      className={`bg-white rounded-lg shadow-sm border border-gray-200 relative transition-all ${
+        isDragging ? 'opacity-50 border-[#80c398] border-2' : ''
+      }`}
+    >
+      {/* Borde superior de color */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#80c398] rounded-l-lg" />
 
-      {/* Header de la pregunta */}
-      <div className="flex items-start gap-3">
-        <div className="flex-1 space-y-2">
-          <input
-            type="text"
-            value={pregunta.texto}
-            onChange={e => onUpdate('texto', e.target.value)}
-            placeholder="Escribe tu pregunta aquí..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
-          />
-          <select
-            value={pregunta.tipo}
-            onChange={e => onUpdate('tipo', e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
-          >
-            <option value="multiple_choice">Opción Múltiple</option>
-            <option value="short_text">Respuesta Corta</option>
-            <option value="long_text">Respuesta Larga</option>
-            <option value="scale">Escala (1-5)</option>
-          </select>
-        </div>
-      </div>
+      <div className="p-6">
+        {/* Header: Grip horizontal + Pregunta + Tipo */}
+        <div className="flex items-start gap-3 mb-4">
+          {/* Grip horizontal para arrastrar */}
+          <div className="pt-3 cursor-grab active:cursor-grabbing" title="Arrastra para reordenar">
+            <GripHorizontal className="w-5 h-5 text-gray-400" />
+          </div>
 
-      {/* Opciones (solo para multiple_choice) */}
-      {pregunta.tipo === 'multiple_choice' && pregunta.opciones && (
-        <div className="space-y-2 pl-4">
-          {pregunta.opciones.map((opcion, optIndex) => (
-            <div key={optIndex} className="flex items-center gap-2">
-              <input type="checkbox" disabled className="rounded" />
+          <div className="flex-1">
+            <div className="flex items-center gap-1">
               <input
                 type="text"
-                value={opcion.texto}
-                onChange={e => onUpdateOpcion(optIndex, e.target.value)}
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm"
+                value={pregunta.texto}
+                onChange={e => onUpdate('texto', e.target.value)}
+                placeholder="Escribe tu pregunta aquí"
+                className="flex-1 px-0 py-2 border-b border-gray-200 focus:border-[#80c398] focus:outline-none text-base text-gray-800 placeholder-gray-300"
               />
+              {pregunta.obligatoria && (
+                <span className="text-red-500 font-bold text-lg">*</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Botón de imagen */}
+            {pregunta.imagen ? (
+              <div className="relative group">
+                <img
+                  src={pregunta.imagen}
+                  alt="Imagen de pregunta"
+                  className="w-10 h-10 object-cover rounded border border-gray-300"
+                />
+                <button
+                  onClick={onEliminarImagen}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={() => onDeleteOpcion(optIndex)}
-                className="p-1 hover:bg-red-50 rounded text-red-600"
+                onClick={onAgregarImagen}
+                className="p-2 hover:bg-gray-100 rounded-full"
+                title="Agregar imagen"
               >
-                <X className="w-4 h-4" />
+                <ImageIcon className="w-5 h-5 text-gray-500" />
               </button>
-            </div>
-          ))}
-          <button
-            onClick={onAddOpcion}
-            className="text-sm text-gray-600 hover:text-emerald-700 font-medium flex items-center gap-1"
-          >
-            <input type="checkbox" disabled className="rounded" />
-            Agregar una Opción
-          </button>
-        </div>
-      )}
+            )}
 
-      {/* Placeholder para short_text */}
-      {pregunta.tipo === 'short_text' && (
-        <div className="pl-4">
-          <div className="border-b border-gray-400 py-2 text-sm text-gray-400">
-            Texto con respuesta breve.
-          </div>
-        </div>
-      )}
-
-      {/* Placeholder para long_text */}
-      {pregunta.tipo === 'long_text' && (
-        <div className="pl-4">
-          <div className="border-b border-gray-400 py-4 text-sm text-gray-400">
-            Texto con respuesta larga.
-          </div>
-        </div>
-      )}
-
-      {/* Placeholder para scale */}
-      {pregunta.tipo === 'scale' && (
-        <div className="pl-4 flex gap-2">
-          {[1, 2, 3, 4, 5].map(num => (
-            <div
-              key={num}
-              className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center text-sm"
+            {/* Selector de tipo */}
+            <select
+              value={pregunta.tipo}
+              onChange={e => onUpdate('tipo', e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-[#80c398] min-w-[180px]"
             >
-              {num}
-            </div>
-          ))}
+              <option value="multiple_choice">Opción Múltiple</option>
+              <option value="checkbox">Casillas de verificación</option>
+              <option value="dropdown">Desplegable</option>
+              <option value="short_text">Respuesta corta</option>
+              <option value="long_text">Párrafo</option>
+              <option value="scale">Escala (estrellas)</option>
+            </select>
+          </div>
         </div>
-      )}
 
-      {/* Footer de la pregunta */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onDuplicate}
-            className="p-1.5 hover:bg-blue-50 rounded text-blue-600"
-            title="Duplicar"
-          >
-            <Copy className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-1.5 hover:bg-red-50 rounded text-red-600"
-            title="Eliminar"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Obligatoria</span>
-          <button
-            onClick={() => onUpdate('obligatoria', !pregunta.obligatoria)}
-            className="relative w-10 h-6 rounded-full transition-colors"
-            style={{ backgroundColor: pregunta.obligatoria ? '#80c398' : '#d1d5db' }}
-          >
-            <span
-              className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform"
-              style={{
-                transform: pregunta.obligatoria ? 'translateX(24px)' : 'translateX(4px)'
-              }}
+        {/* Imagen si existe */}
+        {pregunta.imagen && (
+          <div className="mb-4 ml-8">
+            <img
+              src={pregunta.imagen}
+              alt="Imagen de pregunta"
+              className="max-h-48 rounded border border-gray-200"
             />
-          </button>
-        </div>
-      </div>
+          </div>
+        )}
 
-      {/* Botones laterales de reordenar */}
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-        <button
-          onClick={() => onMove('up')}
-          disabled={index === 0}
-          className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-        >
-          <ChevronUp className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onMove('down')}
-          disabled={index === total - 1}
-          className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-        >
-          <ChevronDown className="w-4 h-4" />
-        </button>
+        {/* Opciones (solo para tipos de opción múltiple) */}
+        {esOpcionMultiple && pregunta.opciones && (
+          <div className="space-y-2 mb-4 ml-8">
+            {pregunta.opciones.map((opcion, optIndex) => (
+              <div key={opcion.id} className="flex items-center gap-3">
+                <input
+                  type={pregunta.tipo === 'checkbox' ? 'checkbox' : 'radio'}
+                  disabled
+                  className="w-4 h-4 text-[#80c398]"
+                />
+                <input
+                  type="text"
+                  value={opcion.texto}
+                  onChange={e => onUpdateOpcion(opcion.id, e.target.value)}
+                  placeholder={`Opción ${optIndex + 1}`}
+                  className="flex-1 px-2 py-1 border-b border-gray-200 focus:border-[#80c398] focus:outline-none text-sm text-gray-700 placeholder-gray-300"
+                />
+                <button
+                  onClick={() => onDeleteOpcion(opcion.id)}
+                  className="p-1 hover:bg-red-50 rounded text-red-500"
+                  title="Eliminar opción"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={onAddOpcion}
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#80c398] ml-7"
+            >
+              <input type={pregunta.tipo === 'checkbox' ? 'checkbox' : 'radio'} disabled className="w-4 h-4" />
+              Agregar una Opción
+            </button>
+          </div>
+        )}
+
+        {/* Preview para respuesta corta */}
+        {pregunta.tipo === 'short_text' && (
+          <div className="mb-4 ml-8">
+            <input
+              type="text"
+              disabled
+              placeholder="Texto con respuesta breve."
+              className="w-full px-2 py-2 border-b border-gray-400 text-sm text-gray-400 bg-transparent"
+            />
+          </div>
+        )}
+
+        {/* Preview para párrafo */}
+        {pregunta.tipo === 'long_text' && (
+          <div className="mb-4 ml-8">
+            <textarea
+              disabled
+              placeholder="Texto con respuesta larga."
+              rows={2}
+              className="w-full px-2 py-2 border-b border-gray-400 text-sm text-gray-400 bg-transparent resize-none"
+            />
+          </div>
+        )}
+
+        {/* Preview para escala con ESTRELLAS */}
+        {pregunta.tipo === 'scale' && (
+          <div className="mb-4 ml-8 flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map(num => (
+              <Star
+                key={num}
+                className="w-8 h-8 text-gray-300 fill-gray-300 cursor-pointer hover:text-yellow-400 hover:fill-yellow-400 transition-colors"
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Footer: Acciones + Toggle Obligatoria */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onDuplicate}
+              className="p-2 hover:bg-gray-100 rounded-full text-gray-600"
+              title="Duplicar"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-2 hover:bg-red-50 rounded-full text-gray-600"
+              title="Eliminar"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Toggle Obligatoria - Estilo Configuración */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">Obligatoria</span>
+            <button
+              onClick={() => onUpdate('obligatoria', !pregunta.obligatoria)}
+              type="button"
+              className="relative rounded-full transition-colors duration-300 focus:outline-none cursor-pointer shadow-inner"
+              style={{
+                width: '60px',
+                height: '32px',
+                backgroundColor: pregunta.obligatoria ? '#80c398' : '#d1d5db',
+                padding: '4px'
+              }}
+            >
+              <span
+                className="absolute top-1 left-1 bg-white rounded-full shadow-md transition-transform duration-300 ease-in-out"
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  transform: pregunta.obligatoria ? 'translateX(-26px)' : 'translateX(0)'
+                }}
+              />
+            </button>
+            {pregunta.obligatoria && (
+              <span className="text-red-500 font-bold text-lg">*</span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
-  );
-}
-
-// =============================================
-// COMPONENTE: BOTÓN DE HERRAMIENTA
-// =============================================
-function ToolButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-12 h-12 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-emerald-500 transition-all flex items-center justify-center"
-      title={label}
-    >
-      {icon}
-    </button>
   );
 }
 
@@ -641,60 +727,87 @@ function ModalVistaPrevia({
 }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-800">Vista Previa: {plantilla.nombre}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-lg">
+          <h2 className="text-xl font-bold text-gray-800">Vista Previa: {plantilla.nombre || 'Sin título'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {plantilla.descripcion && (
-            <p className="text-gray-600 text-sm">{plantilla.descripcion}</p>
-          )}
-
-          <div className="space-y-4">
-            {plantilla.preguntas.map((p, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                <p className="font-medium text-gray-800 mb-3">
-                  {index + 1}. {p.texto}
-                  {p.obligatoria && <span className="text-red-500 ml-1">*</span>}
-                </p>
-                
-                {p.tipo === 'multiple_choice' && p.opciones && (
-                  <div className="space-y-2 pl-6">
-                    {p.opciones.map((opt, optIndex) => (
-                      <label key={optIndex} className="flex items-center gap-2">
-                        <input type="checkbox" disabled className="rounded" />
-                        <span className="text-sm text-gray-700">{opt.texto}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                
-                {p.tipo === 'short_text' && (
-                  <input type="text" disabled placeholder="Tu respuesta..." className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-                )}
-                
-                {p.tipo === 'long_text' && (
-                  <textarea disabled placeholder="Tu respuesta..." rows={3} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" />
-                )}
-                
-                {p.tipo === 'scale' && (
-                  <div className="flex gap-2 pl-6">
-                    {[1, 2, 3, 4, 5].map(num => (
-                      <div key={num} className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center">{num}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+          <div className="bg-white rounded-lg border-t-4 border-t-[#80c398] p-6">
+            <h1 className="text-2xl font-normal text-gray-800 mb-2">
+              {plantilla.nombre || 'Sin título'}
+            </h1>
+            {plantilla.descripcion && (
+              <p className="text-sm text-gray-600">{plantilla.descripcion}</p>
+            )}
           </div>
+
+          {plantilla.preguntas.map((p, index) => (
+            <div key={p.id} className="bg-white rounded-lg p-6 shadow-sm">
+              <p className="font-medium text-gray-800 mb-3">
+                {index + 1}. {p.texto || 'Pregunta sin texto'}
+                {p.obligatoria && <span className="text-red-500 ml-1 font-bold">*</span>}
+              </p>
+
+              {p.imagen && (
+                <img src={p.imagen} alt="Imagen" className="max-h-32 rounded mb-3" />
+              )}
+
+              {p.tipo === 'multiple_choice' && p.opciones && (
+                <div className="space-y-2 pl-6">
+                  {p.opciones.map((opt) => (
+                    <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" disabled className="w-4 h-4" />
+                      <span className="text-sm text-gray-700">{opt.texto}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {p.tipo === 'checkbox' && p.opciones && (
+                <div className="space-y-2 pl-6">
+                  {p.opciones.map((opt) => (
+                    <label key={opt.id} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" disabled className="w-4 h-4" />
+                      <span className="text-sm text-gray-700">{opt.texto}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {p.tipo === 'short_text' && (
+                <input type="text" disabled placeholder="Tu respuesta..." className="w-full px-2 py-2 border-b border-gray-400 text-sm" />
+              )}
+
+              {p.tipo === 'long_text' && (
+                <textarea disabled placeholder="Tu respuesta..." rows={3} className="w-full px-2 py-2 border-b border-gray-400 text-sm resize-none" />
+              )}
+
+              {p.tipo === 'scale' && (
+                <div className="flex items-center gap-1 pl-6">
+                  {[1, 2, 3, 4, 5].map(num => (
+                    <Star key={num} className="w-8 h-8 text-gray-300 fill-gray-300" />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {plantilla.preguntas.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No hay preguntas en esta encuesta
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50">
-          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+          >
             Cerrar
           </button>
         </div>
