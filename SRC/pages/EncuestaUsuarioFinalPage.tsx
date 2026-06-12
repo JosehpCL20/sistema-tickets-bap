@@ -413,22 +413,29 @@ export default function EncuestaUsuarioFinalPage() {
 
                 {/* Dropdown */}
                 {pregunta.tipo === 'dropdown' && pregunta.opciones && (
-                  <select
+                <select
                     value={respuestas[pregunta.id] || ''}
                     onChange={(e) => actualizarRespuesta(pregunta.id, e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2"
+                    className="w-full px-4 py-2 border-2 rounded-lg text-sm bg-white focus:outline-none transition-all"
                     style={{ 
-                      borderColor: tieneError ? '#e84545' : '#d1d5db',
-                      focusRingColor: colorPrincipal 
+                    borderColor: tieneError ? '#e84545' : '#d1d5db' 
                     }}
-                  >
+                    onFocus={(e) => {
+                    e.target.style.borderColor = colorPrincipal;
+                    e.target.style.boxShadow = `0 0 0 3px ${colorPrincipal}30`; // Simula el anillo de enfoque
+                    }}
+                    onBlur={(e) => {
+                    e.target.style.borderColor = tieneError ? '#e84545' : '#d1d5db';
+                    e.target.style.boxShadow = 'none';
+                    }}
+                >
                     <option value="">Seleccionar...</option>
                     {pregunta.opciones.map((opcion) => (
-                      <option key={opcion.id} value={opcion.id}>
+                    <option key={opcion.id} value={opcion.id}>
                         {opcion.texto}
-                      </option>
+                    </option>
                     ))}
-                  </select>
+                </select>
                 )}
 
                 {/* Respuesta Corta */}
