@@ -32,6 +32,7 @@ import NotificacionesPage from './pages/NotificacionesPage';
 import GestionEncuestasPage from './pages/GestionEncuestasPage';
 import EditorEncuestasPage from './pages/EditorEncuestasPage';
 import EncuestaUsuarioFinalPage from './pages/EncuestaUsuarioFinalPage';
+import DetalleTicketsUsuarioPage from './pages/DetalleTicketsUsuarioPage';
 
 // ─── Guards ───────────────────────────────────────────────────────────────────
 function RutaProtegida({ children }: { children: React.ReactNode }) {
@@ -170,6 +171,14 @@ function App() {
 
           {/* Notificaciones */}
           <Route path="notificaciones" element={<NotificacionesPage />} />
+
+          {/* Detalle de Tickets por Usuario (Módulo 29) */}
+          <Route path="detalle-tickets-usuario/:userId" element={
+            <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'supervisor']}>
+              <DetalleTicketsUsuarioPage />
+            </RutaPorRol>
+          } />
+          
 
           {/* ✅ Gestión de Encuestas - AHORA DENTRO DEL MAINLAYOUT */}
           <Route path="gestion-encuestas" element={
