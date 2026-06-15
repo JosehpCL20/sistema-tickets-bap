@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabaseClient';
 import {
   ArrowLeft, Plus, Edit2, Trash2, Eye, ToggleLeft,
   ToggleRight, AlertCircle, CheckCircle, X, Star,
-  CheckSquare, Type, MessageSquare
+  CheckSquare, Type, MessageSquare, Image as ImageIcon
 } from 'lucide-react';
 
 // =============================================
@@ -18,15 +18,17 @@ import {
 // =============================================
 interface Opcion {
   texto: string;
+  imagen?: string;
 }
 
 interface Pregunta {
   id?: number;
   texto: string;
-  tipo: 'multiple_choice' | 'short_text' | 'long_text' | 'scale';
+  tipo: 'multiple_choice' | 'checkbox' | 'dropdown' | 'short_text' | 'long_text' | 'scale';
   obligatoria: boolean;
   orden: number;
   opciones?: Opcion[];
+  imagen?: string;
 }
 
 interface PlantillaEncuesta {
@@ -34,6 +36,7 @@ interface PlantillaEncuesta {
   nombre: string;
   descripcion: string;
   activa: boolean;
+  color_principal?: string;
   preguntas: Pregunta[];
   fecha_creacion?: string;
   fecha_modificacion?: string;
@@ -70,9 +73,24 @@ export default function GestionEncuestasPage() {
             .eq('plantilla_id', plantilla.id)
             .order('orden');
 
+          // Cargar opciones para cada pregunta
+          const preguntasConOpciones = await Promise.all(
+            (preguntas || []).map(async (pregunta) => {
+              const { data: opciones } = await supabase
+                .from('opciones_encuesta')
+                .select('*')
+                .eq('pregunta_id', pregunta.id);
+
+              return {
+                ...pregunta,
+                opciones: opciones || []
+              };
+            })
+          );
+
           return {
             ...plantilla,
-            preguntas: preguntas || []
+            preguntas: preguntasConOpciones
           };
         })
       );
@@ -109,7 +127,7 @@ export default function GestionEncuestasPage() {
     setVistaPrevia(plantilla);
   };
 
-  // ✅ ELIMINAR → Con validación y confirmación
+  // ✅ ELIMINAR → Con validación de tickets activos
   const handleEliminar = async (plantilla: PlantillaEncuesta) => {
     // Validar que no sea la única plantilla activa
     const plantillasActivas = plantillas.filter(p => p.activa);
@@ -118,10 +136,39 @@ export default function GestionEncuestasPage() {
       return;
     }
 
+    // 🔍 Validar si está siendo usada en tickets activos
+    try {
+      const { data: ticketsEnUso, error: errorTickets } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('plantilla_encuesta_id', plantilla.id)
+        .eq('estado', 'resuelto')
+        .limit(1);
+
+      if (errorTickets) throw errorTickets;
+
+      if (ticketsEnUso && ticketsEnUso.length > 0) {
+        alert('⚠️ No se puede eliminar esta plantilla.\n\nEstá siendo utilizada en tickets resueltos pendientes de encuesta.\n\nEspera a que todos los usuarios respondan o desactiva la plantilla primero.');
+        return;
+      }
+    } catch (error) {
+      console.error('Error validando tickets:', error);
+      // Si hay error en la consulta (ej: tabla no existe), continuar con la eliminación
+    }
+
     if (!confirm(`¿Estás seguro de eliminar la plantilla "${plantilla.nombre}"?\n\nEsta acción es permanente y eliminará todas las preguntas asociadas.`)) return;
 
     try {
-      // Eliminar preguntas primero
+      // Eliminar opciones primero (si existen)
+      const preguntaIds = plantilla.preguntas?.map(p => p.id).filter(id => id !== undefined) || [];
+      if (preguntaIds.length > 0) {
+        await supabase
+          .from('opciones_encuesta')
+          .delete()
+          .in('pregunta_id', preguntaIds);
+      }
+
+      // Eliminar preguntas
       await supabase
         .from('preguntas_encuesta')
         .delete()
@@ -339,7 +386,7 @@ export default function GestionEncuestasPage() {
 }
 
 // =============================================
-// MODAL DE VISTA PREVIA
+// MODAL DE VISTA PREVIA MEJORADO
 // =============================================
 function ModalVistaPrevia({
   plantilla,
@@ -348,70 +395,118 @@ function ModalVistaPrevia({
   plantilla: PlantillaEncuesta;
   onClose: () => void;
 }) {
+  const color = plantilla.color_principal || '#80c398';
+  
+  // Función para renderizar cada pregunta según su tipo
   const renderPregunta = (p: Pregunta, index: number) => {
     return (
-      <div key={index} className="border border-gray-200 rounded-lg p-4">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <p className="font-medium text-gray-800 flex items-start gap-2">
-            <span className="text-gray-400">{index + 1}.</span>
-            <span>{p.texto || 'Pregunta sin texto'}</span>
-            {p.obligatoria && <span className="text-red-500 ml-1">*</span>}
+      <div 
+        key={p.id || index} 
+        className="bg-white rounded-lg p-5 shadow-sm border border-gray-200"
+        style={{ borderLeft: `4px solid ${color}` }}
+      >
+        {/* Enunciado */}
+        <div className="flex items-start gap-2 mb-4">
+          <span className="text-gray-400 font-medium text-sm mt-0.5">{index + 1}.</span>
+          <p className="font-medium text-gray-800 flex-1">
+            {p.texto || 'Pregunta sin texto'}
+            {p.obligatoria && <span className="text-red-500 ml-1 font-bold">*</span>}
           </p>
         </div>
-        
+
+        {/* Imagen si existe */}
+        {p.imagen && (
+          <img src={p.imagen} alt="" className="max-h-40 rounded mb-4 border border-gray-200" />
+        )}
+
+        {/* Opción Múltiple */}
         {p.tipo === 'multiple_choice' && p.opciones && (
           <div className="space-y-2 pl-6">
             {p.opciones.map((opt, optIndex) => (
-              <label key={optIndex} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" disabled className="rounded" />
-                <span className="text-sm text-gray-700">{opt.texto}</span>
+              <label key={optIndex} className="flex items-center gap-3 cursor-not-allowed p-2 rounded hover:bg-gray-50">
+                <input type="radio" disabled className="w-4 h-4" style={{ accentColor: color }} />
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-sm text-gray-700">{opt.texto}</span>
+                  {opt.imagen && <img src={opt.imagen} alt="" className="w-10 h-10 object-cover rounded" />}
+                </div>
               </label>
             ))}
           </div>
         )}
-        
+
+        {/* Checkbox */}
+        {p.tipo === 'checkbox' && p.opciones && (
+          <div className="space-y-2 pl-6">
+            {p.opciones.map((opt, optIndex) => (
+              <label key={optIndex} className="flex items-center gap-3 cursor-not-allowed p-2 rounded hover:bg-gray-50">
+                <input type="checkbox" disabled className="w-4 h-4" style={{ accentColor: color }} />
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-sm text-gray-700">{opt.texto}</span>
+                  {opt.imagen && <img src={opt.imagen} alt="" className="w-10 h-10 object-cover rounded" />}
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+
+        {/* Dropdown */}
+        {p.tipo === 'dropdown' && p.opciones && (
+          <div className="pl-6">
+            <select disabled className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 min-w-[200px]">
+              <option>Seleccionar...</option>
+              {p.opciones.map((opt, optIndex) => (
+                <option key={optIndex}>{opt.texto}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Respuesta Corta */}
         {p.tipo === 'short_text' && (
           <div className="pl-6">
             <input
               type="text"
               disabled
-              placeholder="Tu respuesta..."
-              className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50"
+              placeholder="Respuesta corta..."
+              className="w-full px-3 py-2 border-b-2 border-gray-300 bg-transparent text-sm"
             />
           </div>
         )}
-        
+
+        {/* Respuesta Larga */}
         {p.tipo === 'long_text' && (
           <div className="pl-6">
             <textarea
               disabled
-              placeholder="Tu respuesta..."
+              placeholder="Respuesta larga..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50"
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded-md bg-transparent text-sm resize-none"
             />
           </div>
         )}
-        
+
+        {/* Escala de Estrellas */}
         {p.tipo === 'scale' && (
-          <div className="pl-6 flex gap-2">
+          <div className="pl-6 flex gap-2 items-center">
             {[1, 2, 3, 4, 5].map(num => (
-              <button
+              <Star
                 key={num}
-                disabled
-                className="w-10 h-10 rounded-full border border-gray-300 bg-gray-50 text-sm font-medium flex items-center justify-center"
-              >
-                {num}
-              </button>
+                className="w-8 h-8 text-gray-300 fill-gray-300"
+              />
             ))}
+            <span className="ml-2 text-xs text-gray-400">1-5 estrellas</span>
           </div>
         )}
-        
-        <div className="mt-2 pl-6">
-          <span className="text-xs text-gray-400 flex items-center gap-1">
+
+        {/* Badge del tipo */}
+        <div className="mt-3 pl-6">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
             {p.tipo === 'multiple_choice' && <><CheckSquare className="w-3 h-3" /> Opción Múltiple</>}
+            {p.tipo === 'checkbox' && <><CheckSquare className="w-3 h-3" /> Casillas</>}
+            {p.tipo === 'dropdown' && <><Type className="w-3 h-3" /> Desplegable</>}
             {p.tipo === 'short_text' && <><Type className="w-3 h-3" /> Respuesta Corta</>}
             {p.tipo === 'long_text' && <><MessageSquare className="w-3 h-3" /> Respuesta Larga</>}
-            {p.tipo === 'scale' && <><Star className="w-3 h-3" /> Escala (1-5)</>}
+            {p.tipo === 'scale' && <><Star className="w-3 h-3" /> Escala</>}
           </span>
         </div>
       </div>
@@ -422,35 +517,54 @@ function ModalVistaPrevia({
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+        <div 
+          className="px-6 py-4 border-b border-gray-200 flex items-center justify-between"
+          style={{ borderTop: `4px solid ${color}` }}
+        >
           <div>
             <h2 className="text-xl font-bold text-gray-800">Vista Previa</h2>
             <p className="text-sm text-gray-500">{plantilla.nombre}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-lg">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
 
         {/* Contenido */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+          {/* Descripción */}
           {plantilla.descripcion && (
-            <p className="text-gray-600 text-sm bg-blue-50 p-3 rounded-lg border border-blue-200">
-              {plantilla.descripcion}
-            </p>
+            <div 
+              className="bg-white rounded-lg p-4 shadow-sm"
+              style={{ borderLeft: `4px solid ${color}` }}
+            >
+              <p className="text-gray-600 text-sm">{plantilla.descripcion}</p>
+            </div>
           )}
 
+          {/* Nota informativa */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-800">
+              <span className="font-semibold">Vista de solo lectura:</span> Esta es la vista que verán los usuarios finales.
+            </p>
+          </div>
+
+          {/* Preguntas */}
           <div className="space-y-4">
             {plantilla.preguntas && plantilla.preguntas.length > 0 ? (
               plantilla.preguntas.map((p, index) => renderPregunta(p, index))
             ) : (
-              <p className="text-gray-500 text-center py-8">No hay preguntas en esta plantilla</p>
+              <div className="text-center py-12 text-gray-400">
+                <AlertCircle className="w-12 h-12 mx-auto mb-2" />
+                <p>No hay preguntas en esta plantilla</p>
+              </div>
             )}
           </div>
 
+          {/* Nota de obligatorias */}
           {plantilla.preguntas && plantilla.preguntas.filter(p => p.obligatoria).length > 0 && (
-            <p className="text-xs text-gray-500 mt-4">
-              <span className="text-red-500">*</span> Preguntas obligatorias
+            <p className="text-xs text-gray-500 text-center">
+              <span className="text-red-500 font-bold">*</span> Indica pregunta obligatoria
             </p>
           )}
         </div>
@@ -459,7 +573,8 @@ function ModalVistaPrevia({
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+            className="px-5 py-2 rounded-lg text-white font-medium hover:shadow-md transition-all"
+            style={{ backgroundColor: color }}
           >
             Cerrar
           </button>
