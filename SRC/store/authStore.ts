@@ -7,7 +7,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabaseClient';
 import type { User, UserRole, UserPreferences, Notificacion } from '../types';
-import { usuarioMock, usuariosMock, notificacionesMock } from '../mockData';
 
 // Detectar modo preview
 const PREVIEW_MODE = import.meta.env.VITE_PREVIEW_MODE === 'true';

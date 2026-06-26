@@ -1,12 +1,11 @@
 // =============================================
 // APLICACIÓN PRINCIPAL — ROUTING COMPLETO
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
-// Con soporte para Modo Preview
 // =============================================
 
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore, PREVIEW_MODE } from './store/authStore';
+import { useAuthStore } from './store/authStore';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -37,39 +36,30 @@ import DetalleTicketsUsuarioPage from './pages/DetalleTicketsUsuarioPage';
 // ─── Guards ───────────────────────────────────────────────────────────────────
 function RutaProtegida({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
-  
-  if (PREVIEW_MODE) {
-    return <>{children}</>;
-  }
-  
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function RutaPublica({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
-  
-  if (PREVIEW_MODE) {
-    return <>{children}</>;
-  }
-  
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 
 function RutaPorRol({ children, rolesPermitidos }: { children: React.ReactNode; rolesPermitidos: string[] }) {
   const { usuarioActual } = useAuthStore();
-  
-  if (PREVIEW_MODE) {
-    return <>{children}</>;
-  }
-  
+
   if (!usuarioActual || !rolesPermitidos.includes(usuarioActual.rol)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <div className="text-center p-8">
           <p className="text-4xl mb-4">🔒</p>
-          <h2 className="text-xl font-semibold text-gray-800">Acceso Restringido</h2>
-          <p className="text-gray-500 mt-2">No tienes permisos para esta sección</p>
-          <button onClick={() => window.history.back()} className="mt-4 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">← Volver</button>
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">Acceso Restringido</h2>
+          <p className="text-gray-500 dark:text-slate-400 mt-2">No tienes permisos para esta sección</p>
+          <button
+            onClick={() => window.history.back()}
+            className="mt-4 px-4 py-2 bg-gray-200 dark:bg-slate-700 dark:text-slate-200 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600"
+          >
+            ← Volver
+          </button>
         </div>
       </div>
     );
@@ -93,13 +83,6 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* Indicador de Modo Preview */}
-      {PREVIEW_MODE && (
-        <div className="fixed top-0 left-0 right-0 bg-yellow-400 text-yellow-900 text-center py-2 text-sm font-semibold z-50 shadow-lg">
-          🔓 MODO PREVIEW ACTIVO - Datos de demostración
-        </div>
-      )}
-      
       <Routes>
         {/* ── Públicas ── */}
         <Route path="/login" element={<RutaPublica><LoginPage /></RutaPublica>} />
@@ -172,15 +155,14 @@ function App() {
           {/* Notificaciones */}
           <Route path="notificaciones" element={<NotificacionesPage />} />
 
-          {/* Detalle de Tickets por Usuario (Módulo 29) */}
+          {/* Detalle de Tickets por Usuario */}
           <Route path="detalle-tickets-usuario/:userId" element={
             <RutaPorRol rolesPermitidos={['superadmin', 'administrador', 'supervisor']}>
               <DetalleTicketsUsuarioPage />
             </RutaPorRol>
           } />
-          
 
-          {/* ✅ Gestión de Encuestas - AHORA DENTRO DEL MAINLAYOUT */}
+          {/* Gestión de Encuestas */}
           <Route path="gestion-encuestas" element={
             <RutaPorRol rolesPermitidos={['superadmin', 'administrador']}>
               <GestionEncuestasPage />
@@ -200,7 +182,6 @@ function App() {
               <EditorEncuestasPage />
             </RutaPorRol>
           } />
-
         </Route>
       </Routes>
     </BrowserRouter>
