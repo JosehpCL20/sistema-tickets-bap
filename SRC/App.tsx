@@ -3,7 +3,7 @@
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
 // =============================================
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 
@@ -69,18 +69,8 @@ function RutaPorRol({ children, rolesPermitidos }: { children: React.ReactNode; 
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
-  const usuarioActual = useAuthStore(s => s.usuarioActual);
-
-  useEffect(() => {
-    if (!usuarioActual?.preferencias) return;
-    const p = usuarioActual.preferencias;
-    document.documentElement.style.fontSize = `${p.tamano_texto || 100}%`;
-    document.documentElement.style.setProperty('--image-contrast', p.contraste_imagenes ? '1.2' : '1');
-    document.documentElement.style.setProperty('--button-scale', p.tamano_botones ? `${p.tamano_botones / 100}` : '1');
-    if (p.lector_pantalla) document.documentElement.setAttribute('aria-live', 'polite');
-    else document.documentElement.removeAttribute('aria-live');
-  }, [usuarioActual?.preferencias]);
-
+  // Nota: las preferencias de apariencia (modo oscuro, tamaño de texto, etc.)
+  // ya las aplica themeStore.ts directamente al <html> — no duplicar aquí.
   return (
     <BrowserRouter>
       <Routes>

@@ -81,7 +81,7 @@ export default function MisUsuariosPage() {
 
       // 1. Cargar usuarios del área del supervisor
       const { data: usuariosData, error: errorUsuarios } = await supabase
-        .from('usuarios')
+        .from('users')
         .select('*')
         .eq('area', supervisor.area)
         .order('nombre');
@@ -157,16 +157,16 @@ export default function MisUsuariosPage() {
   const obtenerStatsEncuestas = async (userId: string): Promise<EncuestaStats> => {
     try {
       const { data: encuestasEnviadas, error } = await supabase
-        .from('encuestas_enviadas')
-        .select('id, fecha_envio, completada')
-        .eq('usuario_id', userId)
-        .order('fecha_envio', { ascending: false });
+        .from('encuestas')
+        .select('id, fecha_creacion, completada')
+        .eq('user_id', userId)
+        .order('fecha_creacion', { ascending: false });
 
       if (error) throw error;
 
       const completadas = encuestasEnviadas?.filter(e => e.completada).length || 0;
       const pendientes = encuestasEnviadas?.filter(e => !e.completada).length || 0;
-      const ultimoEnvio = encuestasEnviadas?.[0]?.fecha_envio || null;
+      const ultimoEnvio = encuestasEnviadas?.[0]?.fecha_creacion || null;
 
       return { completadas, pendientes, ultimoEnvio };
     } catch (error) {

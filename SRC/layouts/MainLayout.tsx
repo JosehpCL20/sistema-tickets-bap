@@ -87,7 +87,7 @@ export default function MainLayout() {
       path: '/dashboard-area', 
       icon: LayoutDashboard, 
       label: 'Dashboard Área',
-      roles: ['supervisor']
+      roles: ['superadmin', 'administrador', 'supervisor']
     },
     { 
       path: '/dashboard-general', 
@@ -96,10 +96,28 @@ export default function MainLayout() {
       roles: ['superadmin', 'administrador']
     },
     { 
+      path: '/dashboard-encuestas', 
+      icon: LayoutDashboard, 
+      label: 'Dashboard Encuestas',
+      roles: ['superadmin', 'administrador', 'supervisor']
+    },
+    { 
+      path: '/gestion-encuestas', 
+      icon: Settings, 
+      label: 'Gestión de Encuestas',
+      roles: ['superadmin', 'administrador']
+    },
+    { 
       path: '/usuarios', 
       icon: Users, 
       label: 'Usuarios',
       roles: ['superadmin', 'administrador']
+    },
+    { 
+      path: '/usuarios/mis-usuarios', 
+      icon: Users, 
+      label: 'Mis Usuarios',
+      roles: ['superadmin', 'supervisor']
     }
   ];
 
@@ -260,8 +278,11 @@ export default function MainLayout() {
             </button>
 
             {/* Centro - Título */}
-            <div className="flex-1 text-center">
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-100">
+            <div 
+              className="flex-1 text-center cursor-pointer"
+              onClick={() => navigate('/dashboard')}
+            >
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                 Sistema de Gestión de Tickets
               </h2>
             </div>

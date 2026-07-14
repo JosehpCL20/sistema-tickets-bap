@@ -71,7 +71,7 @@ export default function DetalleTicketsUsuarioPage() {
     try {
       // 1. Cargar información del usuario
       const { data: usuarioData, error: errorUsuario } = await supabase
-        .from('usuarios')
+        .from('users')
         .select('id, nombre, apellidos, area')
         .eq('id', usuarioId)
         .single();
