@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import type { UserRole } from '../types';
 import { 
-  Search, Filter, UserPlus, Edit2, Trash2, X, Save,
+  ArrowLeft, Search, Filter, UserPlus, Edit2, Trash2, X, Save,
   CheckCircle, XCircle, Shield, Loader2, RefreshCw,
   Mail, Phone, Building2, AlertTriangle, AlertCircle
 } from 'lucide-react';
@@ -459,9 +459,18 @@ export default function UsuariosPage() {
     <div className="space-y-6">
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
-          <p className="text-gray-500 mt-1">Administra los usuarios del sistema</p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Gestión de Usuarios</h1>
+            <p className="text-gray-500 mt-1">Administra los usuarios del sistema</p>
+          </div>
         </div>
         {usuarioActual?.rol === 'superadmin' && (
           <button

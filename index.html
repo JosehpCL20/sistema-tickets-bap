@@ -4,6 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistema de Tickets - Banco de Alimentos</title>
+    <script>
+      // Anti-flash: aplica el modo oscuro y tamaños guardados ANTES de que
+      // React monte, para que no se vea un destello de tema claro al recargar.
+      (function () {
+        try {
+          var raw = localStorage.getItem('bap-theme-storage');
+          if (!raw) return;
+          var parsed = JSON.parse(raw);
+          var prefs = parsed && parsed.state && parsed.state.preferenciasGuardadas;
+          if (!prefs) return;
+          var root = document.documentElement;
+          if (prefs.modoOscuro) root.classList.add('dark');
+          if (prefs.contrasteImagenes) root.classList.add('bap-contraste-imagenes');
+          if (prefs.lectorPantalla) root.classList.add('bap-modo-lector');
+          if (typeof prefs.tamañoTexto === 'number') {
+            root.style.fontSize = prefs.tamañoTexto + '%';
+          }
+          if (typeof prefs.tamañoBotones === 'number') {
+            root.style.setProperty('--bap-button-scale', String(prefs.tamañoBotones / 100));
+          }
+        } catch (e) {
+          // Si algo falla, simplemente se carga con el tema claro por defecto.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

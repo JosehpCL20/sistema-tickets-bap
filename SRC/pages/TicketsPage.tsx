@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useTicketStore } from '../store/ticketStore';
 import { 
-  PlusCircle, Search, Filter, ChevronLeft, ChevronRight, 
+  ArrowLeft, PlusCircle, Search, Filter, ChevronLeft, ChevronRight, 
   Clock, User, Calendar, CheckCircle, Ticket
 } from 'lucide-react';
 
@@ -130,9 +130,18 @@ export default function TicketsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Mis Tickets</h1>
-          <p className="text-gray-500 mt-1">Gestiona y da seguimiento a tus solicitudes</p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Mis Tickets</h1>
+            <p className="text-gray-500 mt-1">Gestiona y da seguimiento a tus solicitudes</p>
+          </div>
         </div>
         <button
           onClick={() => navigate('/tickets/nuevo')}

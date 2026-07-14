@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
 import { 
-  User, Mail, Phone, MapPin, Lock, Save, X, Camera,
+  ArrowLeft, User, Mail, Phone, MapPin, Lock, Save, X, Camera,
   AlertCircle, CheckCircle, Loader2, Eye, EyeOff
 } from 'lucide-react';
 
@@ -379,10 +379,19 @@ export default function PerfilPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Mi Perfil</h1>
-        <p className="text-gray-500 mt-1">Gestiona tu información personal y contraseña</p>
-      </div>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Mi Perfil</h1>
+            <p className="text-gray-500 mt-1">Gestiona tu información personal y contraseña</p>
+          </div>
+        </div>
 
       {/* ✅ MENSAJE PRINCIPAL DE ERROR/ÉXITO */}
       {mensaje && (

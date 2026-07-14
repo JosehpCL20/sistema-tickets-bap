@@ -3,37 +3,30 @@
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
 // =============================================
 
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabaseClient';
-import { 
-  LogIn, 
-  Mail, 
-  Lock, 
-  AlertCircle, 
-  Loader2,
-  HelpCircle,
-  Eye,
-  EyeOff,
-  Heart
+import {
+  LogIn, Mail, Lock, AlertCircle, Loader2,
+  HelpCircle, Eye, EyeOff, Heart,
 } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isLoading, error, limpiarError } = useAuthStore();
-  
+
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [verPassword, setVerPassword] = useState(false);
   const [recordarme, setRecordarme] = useState(false);
   const [mostrarRecuperar, setMostrarRecuperar] = useState(false);
   const [emailRecuperacion, setEmailRecuperacion] = useState('');
-  const [mensajeRecuperacion, setMensajeRecuperacion] = useState<{ tipo: 'success' | 'error', texto: string } | null>(null);
+  const [mensajeRecuperacion, setMensajeRecuperacion] = useState<{
+    tipo: 'success' | 'error'; texto: string;
+  } | null>(null);
   const [enviando, setEnviando] = useState(false);
 
-  // Cargar datos guardados al montar
   useEffect(() => {
     const datosGuardados = localStorage.getItem('helpdesk_recordar');
     if (datosGuardados) {
@@ -51,21 +44,15 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     limpiarError();
-    
-    // Guardar en localStorage si "Recordarme" está marcado
+
     if (recordarme) {
-      localStorage.setItem('helpdesk_recordar', JSON.stringify({
-        correo: correo,
-        password: password
-      }));
+      localStorage.setItem('helpdesk_recordar', JSON.stringify({ correo, password }));
     } else {
       localStorage.removeItem('helpdesk_recordar');
     }
-    
+
     const exito = await login(correo, password);
-    if (exito) {
-      navigate('/dashboard');
-    }
+    if (exito) navigate('/dashboard');
   };
 
   const handleRecuperarPassword = async (e: React.FormEvent) => {
@@ -80,29 +67,20 @@ export default function LoginPage() {
     }
 
     try {
-      // Enviar email de recuperación con Supabase
       const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacion, {
-        redirectTo: `${window.location.origin}/recuperar-password`
+        redirectTo: `${window.location.origin}/recuperar-password`,
       });
-
       if (error) throw error;
 
-      setMensajeRecuperacion({ 
-        tipo: 'success', 
-        texto: `✅ Se ha enviado un correo a ${emailRecuperacion} con instrucciones para restablecer tu contraseña. 
-                ℹ️ Cada enlace solo se puede usar una vez. Si no lo recibes, puedes solicitar otro.` 
+      setMensajeRecuperacion({
+        tipo: 'success',
+        texto: `✅ Se ha enviado un correo a ${emailRecuperacion} con instrucciones para restablecer tu contraseña. Cada enlace solo se puede usar una vez.`,
       });
-      
-      // No cerrar el modal inmediatamente, dejar que el usuario vea el mensaje
-      setTimeout(() => {
-        setMensajeRecuperacion(null);
-      }, 8000);
-
+      setTimeout(() => setMensajeRecuperacion(null), 8000);
     } catch (error: any) {
-      console.error('Error recuperando contraseña:', error);
-      setMensajeRecuperacion({ 
-        tipo: 'error', 
-        texto: error.message || 'Error al enviar el correo. Verifica que el correo exista o intenta de nuevo en unos minutos.' 
+      setMensajeRecuperacion({
+        tipo: 'error',
+        texto: error.message || 'Error al enviar el correo. Verifica que el correo exista o intenta de nuevo.',
       });
     } finally {
       setEnviando(false);
@@ -112,42 +90,32 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Lado izquierdo - Branding */}
-      <div 
+      <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden"
-        style={{ 
-          background: 'linear-gradient(135deg, #80c398 0%, #6ab088 50%, #5a9f7c 100%)'
-        }}
+        style={{ background: 'linear-gradient(135deg, #80c398 0%, #6ab088 50%, #5a9f7c 100%)' }}
       >
-        {/* Decoración de fondo */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl"></div>
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
           <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full blur-3xl"></div>
         </div>
 
-        {/* Contenido */}
         <div className="relative z-10 text-center">
-          {/* Logo grande */}
           <div className="mb-8">
             <div className="w-40 h-40 mx-auto bg-white rounded-3xl shadow-2xl flex items-center justify-center mb-6">
-              <img 
-                src="/img/logo-banco-alimentos.jpg" 
+              <img
+                src="/img/logo-banco-alimentos.jpg"
                 alt="Banco de Alimentos Perú"
                 className="w-36 h-36 object-contain rounded-2xl"
               />
             </div>
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Help Desk
-            </h1>
-            <p className="text-xl text-white/90 mb-2">
-              Banco de Alimentos Perú
-            </p>
+            <h1 className="text-4xl font-bold text-white mb-4">Help Desk</h1>
+            <p className="text-xl text-white/90 mb-2">Banco de Alimentos Perú</p>
             <p className="text-white/80 max-w-md mx-auto">
               Sistema de Gestión de Tickets - Soporte Técnico
             </p>
           </div>
 
-          {/* Frase inspiradora */}
           <div className="mt-12 p-6 bg-white/10 backdrop-blur-sm rounded-2xl max-w-md mx-auto">
             <Heart className="w-8 h-8 text-white mx-auto mb-3" />
             <p className="text-white italic text-lg">
@@ -163,8 +131,8 @@ export default function LoginPage() {
           {/* Logo móvil */}
           <div className="lg:hidden text-center mb-8">
             <div className="w-24 h-24 mx-auto bg-white rounded-2xl shadow-lg flex items-center justify-center mb-4">
-              <img 
-                src="/img/logo-banco-alimentos.jpg" 
+              <img
+                src="/img/logo-banco-alimentos.jpg"
                 alt="Logo"
                 className="w-20 h-20 object-contain rounded-xl"
               />
@@ -173,18 +141,12 @@ export default function LoginPage() {
             <p className="text-gray-500">Banco de Alimentos Perú</p>
           </div>
 
-          {/* Card de login */}
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Bienvenido de vuelta
-              </h2>
-              <p className="text-gray-500">
-                Ingresa tus credenciales para acceder
-              </p>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Bienvenido de vuelta</h2>
+              <p className="text-gray-500">Ingresa tus credenciales para acceder</p>
             </div>
 
-            {/* Mensaje de error */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -193,7 +155,6 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Correo */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Correo Electrónico
@@ -212,7 +173,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Contraseña */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Contraseña
@@ -238,14 +198,13 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Recordarme y Recuperar contraseña */}
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={recordarme}
                     onChange={(e) => setRecordarme(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                    className="w-4 h-4 rounded border-gray-300"
                     style={{ accentColor: '#80c398' }}
                   />
                   <span className="text-sm text-gray-600">Recordarme</span>
@@ -260,7 +219,6 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Botón de login */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -270,34 +228,26 @@ export default function LoginPage() {
                 onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = '#80c398')}
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Iniciando sesión...
-                  </>
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Iniciando sesión...</>
                 ) : (
-                  <>
-                    <LogIn className="w-5 h-5" />
-                    Iniciar Sesión
-                  </>
+                  <><LogIn className="w-5 h-5" /> Iniciar Sesión</>
                 )}
               </button>
             </form>
 
-            {/* Info de ayuda */}
             <div className="mt-6 p-4 bg-blue-50 rounded-xl flex items-start gap-3">
               <HelpCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">
                 <p className="font-medium mb-1">¿Necesitas ayuda?</p>
                 <p className="text-blue-600">
-                  Contacta al área de Sistemas y Procesos:<br/>
-                  📧 sistemas@bancodealimentosperu.org<br/>
+                  Contacta al área de Sistemas y Procesos:<br />
+                  📧 sistemas@bancodealimentosperu.org<br />
                   📞 +51 917 023 025
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Footer */}
           <p className="text-center text-sm text-gray-500 mt-6">
             © 2026 Banco de Alimentos Perú. Todos los derechos reservados.
           </p>
@@ -312,18 +262,16 @@ export default function LoginPage() {
               <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <Lock className="w-8 h-8 text-blue-500" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">
-                Recuperar Contraseña
-              </h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Recuperar Contraseña</h3>
               <p className="text-gray-500 text-sm">
-                Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña
+                Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña
               </p>
             </div>
 
             {mensajeRecuperacion && (
               <div className={`mb-4 p-4 rounded-xl flex items-start gap-2 ${
-                mensajeRecuperacion.tipo === 'success' 
-                  ? 'bg-green-50 border border-green-200' 
+                mensajeRecuperacion.tipo === 'success'
+                  ? 'bg-green-50 border border-green-200'
                   : 'bg-red-50 border border-red-200'
               }`}>
                 <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
@@ -376,8 +324,7 @@ export default function LoginPage() {
                 >
                   {enviando ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Enviando...
+                      <Loader2 className="w-5 h-5 animate-spin" /> Enviando...
                     </span>
                   ) : (
                     'Enviar Correo'

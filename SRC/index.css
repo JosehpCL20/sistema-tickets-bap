@@ -1,3 +1,56 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* =============================================
+   TEMA GLOBAL - MODO OSCURO Y ACCESIBILIDAD
+   Sistema de Gestión de Tickets - Banco de Alimentos Perú
+   ============================================= */
+
+:root {
+  --bap-button-scale: 1;
+}
+
+/* Transición suave al cambiar entre modo claro/oscuro en toda la app */
+html.dark,
+html:not(.dark) {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-gray-50 text-gray-800;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.dark body {
+  @apply bg-slate-900 text-slate-100;
+}
+
+/* Scrollbar coherente con el tema en navegadores basados en WebKit */
+html.dark ::-webkit-scrollbar-track {
+  background-color: #1e293b;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background-color: #475569;
+  border-radius: 9999px;
+}
+
+/* Tamaño de botones/elementos interactivos (preferencia "Tamaño de Botones") */
+.btn-scalable {
+  transform: scale(var(--bap-button-scale));
+  transform-origin: center;
+}
+
+/* Contraste de imágenes en tickets */
+html.bap-contraste-imagenes img {
+  filter: contrast(1.25) saturate(1.1);
+}
+
+/* Modo lector de pantalla: foco más visible y áreas táctiles claras */
+html.bap-modo-lector *:focus-visible {
+  outline: 3px solid #2563eb !important;
+  outline-offset: 2px !important;
+}
+html.dark.bap-modo-lector *:focus-visible {
+  outline-color: #60a5fa !important;
+}
