@@ -23,7 +23,7 @@ interface Ticket {
   tecnico?: string;
   prioridad: 'baja' | 'media' | 'alta' | 'muy_alta';
   categoria: string;
-  fecha_apertura: string;
+  fecha_creacion: string;
   tiempo_solucion?: string;
   tiempo_estimado?: string;
   tiempo_cierre?: string;
@@ -84,20 +84,20 @@ export default function DetalleTicketsUsuarioPage() {
         .from('tickets')
         .select('*')
         .eq('solicitante_id', usuarioId)
-        .order('fecha_apertura', { ascending: false });
+        .order('fecha_creacion', { ascending: false });
 
       // Aplicar filtros de período
       if (filtroAnio !== 'todos') {
         const inicioAnio = `${filtroAnio}-01-01`;
         const finAnio = `${filtroAnio}-12-31`;
-        query = query.gte('fecha_apertura', inicioAnio).lte('fecha_apertura', finAnio);
+        query = query.gte('fecha_creacion', inicioAnio).lte('fecha_creacion', finAnio);
       }
 
       if (filtroMes !== 'todos' && filtroAnio !== 'todos') {
         const mesNum = parseInt(filtroMes);
         const inicioMes = `${filtroAnio}-${String(mesNum).padStart(2, '0')}-01`;
         const finMes = new Date(parseInt(filtroAnio), mesNum, 0).toISOString().split('T')[0];
-        query = query.gte('fecha_apertura', inicioMes).lte('fecha_apertura', finMes);
+        query = query.gte('fecha_creacion', inicioMes).lte('fecha_creacion', finMes);
       }
 
       const { data: ticketsData, error: errorTickets } = await query;
@@ -111,7 +111,7 @@ export default function DetalleTicketsUsuarioPage() {
         tecnico: t.tecnico_nombre || t.tecnico_id || 'Sin asignar',
         prioridad: t.prioridad || 'media',
         categoria: t.categoria || 'General',
-        fecha_apertura: t.fecha_apertura || t.created_at,
+        fecha_creacion: t.fecha_creacion || t.created_at,
         tiempo_solucion: t.tiempo_solucion,
         tiempo_estimado: t.tiempo_estimado,
         tiempo_cierre: t.tiempo_cierre,
@@ -169,7 +169,7 @@ export default function DetalleTicketsUsuarioPage() {
         'Técnico': t.tecnico || 'Sin asignar',
         'Prioridad': t.prioridad.charAt(0).toUpperCase() + t.prioridad.slice(1).replace('_', ' '),
         'Categoría': t.categoria,
-        'Fecha de Apertura': new Date(t.fecha_apertura).toLocaleString('es-PE'),
+        'Fecha de Apertura': new Date(t.fecha_creacion).toLocaleString('es-PE'),
         'Tiempo de Solución': t.tiempo_solucion || 'N/A',
         'Tiempo Estimado': t.tiempo_estimado || 'N/A',
         'Tiempo de Cierre': t.tiempo_cierre || 'N/A',
@@ -442,12 +442,12 @@ export default function DetalleTicketsUsuarioPage() {
                     <td className="px-3 py-3 text-center">
                       <div className="text-xs text-gray-600">
                         <Calendar className="w-3 h-3 inline mr-1" />
-                        {new Date(ticket.fecha_apertura).toLocaleDateString('es-PE', {
+                        {new Date(ticket.fecha_creacion).toLocaleDateString('es-PE', {
                           day: '2-digit', month: 'short', year: 'numeric'
                         })}
                         <br />
                         <span className="text-gray-400">
-                          {new Date(ticket.fecha_apertura).toLocaleTimeString('es-PE', {
+                          {new Date(ticket.fecha_creacion).toLocaleTimeString('es-PE', {
                             hour: '2-digit', minute: '2-digit'
                           })}
                         </span>

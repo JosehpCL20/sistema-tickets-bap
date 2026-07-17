@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { useAuthStore } from '../store/authStore';
 import * as XLSX from 'xlsx';
 import {
   ArrowLeft, Search, Users, Ticket, CheckCircle, Clock,
@@ -52,6 +53,7 @@ interface UsuarioConStats extends Usuario {
 // =============================================
 export default function MisUsuariosPage() {
   const navigate = useNavigate();
+  const usuarioActual = useAuthStore(s => s.usuarioActual);
   const [usuarios, setUsuarios] = useState<UsuarioConStats[]>([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
@@ -60,12 +62,11 @@ export default function MisUsuariosPage() {
   const [areaSupervisor, setAreaSupervisor] = useState<string>('');
   const [exportando, setExportando] = useState(false);
 
-  // Obtener datos del supervisor actual (simulado - reemplazar con auth real)
+  // Datos del supervisor real logueado
   const obtenerSupervisorActual = async () => {
-    // TODO: Reemplazar con tu sistema de autenticación real
     return {
-      id: 'sup_001',
-      area: 'Soporte TI',
+      id: usuarioActual?.id || '',
+      area: usuarioActual?.area || '',
       organizacion: 'Banco de Alimentos Perú'
     };
   };
