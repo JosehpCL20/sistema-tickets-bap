@@ -1,11 +1,11 @@
 // =============================================
-// PÁGINA: RECUPERAR CONTRASEÑA
+// PÁGINA: RECUPERAR CONTRASEÑA (flujo PKCE)
 // Sistema de Gestión de Tickets - Banco de Alimentos Perú
 // =============================================
 
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { 
   Lock, 
@@ -19,6 +19,7 @@ import {
 
 export default function RecuperarPasswordPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [passwordNuevo, setPasswordNuevo] = useState('');
   const [passwordConfirmar, setPasswordConfirmar] = useState('');
@@ -29,30 +30,67 @@ export default function RecuperarPasswordPage() {
   const [mensaje, setMensaje] = useState<{ tipo: 'success' | 'error', texto: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Verificar sesión de recuperación
+  // Verificar / canjear el código de recuperación (flujo PKCE)
   useEffect(() => {
-    const verificarSesion = async () => {
+    const procesarEnlace = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session) {
-          setError('El enlace de recuperación es inválido o ha expirado. Solicita uno nuevo.');
-        } else {
-          // Verificar que es una sesión de recuperación
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) {
-            setError('No se pudo verificar tu identidad. Solicita un nuevo enlace de recuperación.');
-          }
+        // 1) Si ya existe una sesión activa (por ejemplo, el listener
+        //    de Supabase ya la procesó automáticamente), continuamos.
+        const { data: { session: sesionExistente } } = await supabase.auth.getSession();
+        if (sesionExistente) {
+          setError(null);
+          setCargando(false);
+          return;
         }
+
+        // 2) Con PKCE, Supabase manda el código como query param "code"
+        //    en vez de un token en el hash (#access_token=...).
+        const code = searchParams.get('code');
+
+        // 3) Si la URL trae un error explícito (enlace ya usado/expirado
+        //    por el pre-escaneo del cliente de correo, o vencido de verdad)
+        const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+        const errorDescripcion = 
+          searchParams.get('error_description') || hashParams.get('error_description');
+
+        if (errorDescripcion) {
+          setError(
+            'El enlace de recuperación ya no es válido. Esto puede pasar porque tu ' +
+            'proveedor de correo revisa los enlaces automáticamente por seguridad. ' +
+            'Solicita un nuevo enlace e inténtalo de nuevo.'
+          );
+          setCargando(false);
+          return;
+        }
+
+        if (!code) {
+          setError('El enlace de recuperación es inválido o ha expirado. Solicita uno nuevo.');
+          setCargando(false);
+          return;
+        }
+
+        // 4) Canjear el código por una sesión real.
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (exchangeError || !data.session) {
+          console.error('Error canjeando código de recuperación:', exchangeError);
+          setError('El enlace de recuperación es inválido o ha expirado. Solicita uno nuevo.');
+          setCargando(false);
+          return;
+        }
+
+        setError(null);
+        setCargando(false);
+
       } catch (err) {
+        console.error('Error procesando enlace de recuperación:', err);
         setError('Error al verificar el enlace. Solicita uno nuevo.');
+        setCargando(false);
       }
-      
-      setCargando(false);
     };
-    
-    verificarSesion();
-  }, []);
+
+    procesarEnlace();
+  }, [searchParams]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();

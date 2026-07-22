@@ -11,10 +11,16 @@
   --bap-button-scale: 1;
 }
 
-/* Transición suave al cambiar entre modo claro/oscuro en toda la app */
-html.dark,
+/* ⚠️ FIX: antes esto era "light dark" en ambos casos, lo que dejaba
+   que el navegador eligiera el esquema según el SO del usuario,
+   ignorando tu clase .dark. Esto hacía que inputs y otros controles
+   nativos se vieran oscuros incluso en modo claro si el SO tenía
+   dark mode activado. Ahora se fuerza explícitamente cada esquema. */
+html.dark {
+  color-scheme: dark;
+}
 html:not(.dark) {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 body {

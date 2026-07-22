@@ -155,18 +155,26 @@ export default function MainLayout() {
         />
       )}
 
-      {/* Sidebar - VERDE #80c398 */}
+      {/* =============================================
+          SIDEBAR - VERDE #80c398
+          ⚠️ FIX: ahora es un contenedor flex-col de altura completa.
+          El <nav> crece con flex-1 y hace scroll interno si hace falta;
+          el perfil ya NO usa position:absolute, así que se queda pegado
+          naturalmente al final sin dejar un hueco gigante cuando hay
+          pocos items de menú.
+      ============================================= */}
       <aside 
         className={`
           fixed top-0 left-0 z-50 h-full w-64 text-white
+          flex flex-col
           transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
         style={{ backgroundColor: '#80c398' }}
       >
-        {/* Logo */}
+        {/* Logo - tamaño fijo, no crece */}
         <div 
-          className="flex flex-col items-center gap-3 p-6"
+          className="flex-shrink-0 flex flex-col items-center gap-3 p-6"
           style={{ borderBottom: '1px solid #6ab088' }}
         >
           <img 
@@ -181,15 +189,11 @@ export default function MainLayout() {
         </div>
 
         {/* =============================================
-            NAVEGACIÓN - CON ESPACIO PARA EL PERFIL ABAJO
+            NAVEGACIÓN - crece para llenar el espacio disponible
+            (flex-1) y hace scroll interno si el contenido excede
+            la altura visible, en vez de dejar un hueco fijo.
         ============================================= */}
-        <nav 
-          className="p-4 space-y-1"
-          style={{ 
-            maxHeight: 'calc(100vh - 280px)',
-            overflowY: 'auto'
-          }}
-        >
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {menuFiltrado.map((item) => (
             <NavLink
               key={item.path}
@@ -227,15 +231,15 @@ export default function MainLayout() {
         </nav>
 
         {/* =============================================
-            PERFIL DE USUARIO - FIJO EN LA PARTE INFERIOR
+            PERFIL DE USUARIO - ahora en flujo normal (no absolute),
+            se pega al final del flex-col automáticamente.
         ============================================= */}
         <div 
-          className="absolute left-0 right-0 border-t border-white/20 pt-4 px-4"
+          className="flex-shrink-0 border-t border-white/20 px-4"
           style={{ 
-            bottom: '0px',  // ✅ Distancia desde el borde inferior de la pantalla
             backgroundColor: 'rgba(0,0,0,0.1)',
-            paddingTop: '10px',   // ✅ Distancia desde el nombre hasta el borde superior del fondo
-            paddingBottom: '10px' // ✅ Distancia desde el correo hasta el borde inferior del fondo
+            paddingTop: '10px',
+            paddingBottom: '10px'
           }}
         >
           <div className="flex items-center gap-3">

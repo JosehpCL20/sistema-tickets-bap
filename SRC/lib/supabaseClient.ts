@@ -9,9 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    flowType: 'pkce', // Evita que el pre-escaneo de enlaces de Gmail/Outlook
+                       // invalide el token de recuperación antes de que el
+                       // usuario haga clic. El "code" solo se puede canjear
+                       // desde el navegador que inició la solicitud.
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false, // ← CAMBIO IMPORTANTE
+    detectSessionInUrl: false, // Se mantiene en false: el canje del código
+                               // se hace manualmente en RecuperarPasswordPage.tsx
+                               // (y en cualquier otra página que reciba enlaces
+                               // de Supabase Auth, como activación de cuenta).
     storage: window.localStorage,
   },
 });
